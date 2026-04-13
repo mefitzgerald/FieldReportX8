@@ -75,7 +75,7 @@ export default function LoginScreen() {
       await login(email.trim(), password);
       console.log("[Login] Login successful");
     } catch (error) {
-      console.error("[Login] Login failed:", error);
+      console.warn("[Login] Login failed:", error);
       Alert.alert("Login Failed", getErrorMessage(error));
     } finally {
       setIsLoading(false);
@@ -103,7 +103,7 @@ export default function LoginScreen() {
       await register(email.trim(), password, displayName.trim());
       console.log("[Login] Registration successful");
     } catch (error) {
-      console.error("[Login] Registration failed:", error);
+      console.warn("[Login] Registration failed:", error);
       Alert.alert("Registration Failed", getErrorMessage(error));
     } finally {
       setIsLoading(false);
