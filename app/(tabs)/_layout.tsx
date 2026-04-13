@@ -3,6 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Link, Tabs } from "expo-router";
 import React from "react";
 import { Image, Pressable, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { THEME_COLOURS, useTheme } from "@/contexts/ThemeContext";
 
 
@@ -11,6 +12,7 @@ import { THEME_COLOURS, useTheme } from "@/contexts/ThemeContext";
 export default function TabLayout() {
   const { theme } = useTheme();
   const colours = THEME_COLOURS[theme];
+  const insets = useSafeAreaInsets();
   
   return (
     <>
@@ -26,6 +28,9 @@ export default function TabLayout() {
         tabBarStyle: {
           backgroundColor: colours.background,
           borderTopColor: colours.border,
+          paddingBottom: insets.bottom + 4,
+          paddingTop: 6,
+          height: 56 + insets.bottom,
         },
         // Header background and text colour
         headerStyle: { backgroundColor: colours.background },

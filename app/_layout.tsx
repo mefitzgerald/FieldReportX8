@@ -14,6 +14,7 @@ import { useColorScheme } from "@/components/useColorScheme";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { THEME_COLOURS, ThemeProvider, useTheme } from "@/contexts/ThemeContext";
 import { sqliteHelper } from "@/utils/sqliteHelper";
+import * as NavigationBar from "expo-navigation-bar";
 import {
   DarkTheme,
   DefaultTheme,
@@ -99,6 +100,12 @@ function RootLayoutNav() {
       SplashScreen.hideAsync();
     }
   }, [isLoading]);
+
+  // Sync the system navigation bar colour and button style with the active theme
+  useEffect(() => {
+    NavigationBar.setBackgroundColorAsync(colours.background);
+    NavigationBar.setButtonStyleAsync(theme === "dark" ? "light" : "dark");
+  }, [theme]);
 
   return (
     <>
