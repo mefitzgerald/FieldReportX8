@@ -1,0 +1,41 @@
+{
+  "reportTemplates": [
+    {
+      "reportTemplateName": "Default Field Report",
+      "reportTemplateCategory": "General",
+      "reportTemplateLayout": "landscape",
+      "reportTemplateLayoutLogo": 0,
+      "reportTemplateLayoutCompanyName": 0,
+      "reportTemplateLayoutContactDetails": 0,
+      "reportTemplateFieldCount": 4,
+      "reportTemplateVersion": 1,
+      "reportTemplateShared": 1,
+      "reportFieldTemplates": [
+        {
+          "fieldTemplateLabel": "User Name",
+          "fieldTemplateType": "text",
+          "fieldTemplateRequired": 1,
+          "fieldOrderNumber": 1
+        },
+        {
+          "fieldTemplateLabel": "Take a Photo",
+          "fieldTemplateType": "camera",
+          "fieldTemplateRequired": 0,
+          "fieldOrderNumber": 2
+        },
+        {
+          "fieldTemplateLabel": "Capture Gyro Data",
+          "fieldTemplateType": "sensor_gyro",
+          "fieldTemplateRequired": 0,
+          "fieldOrderNumber": 3
+        },
+        {
+          "fieldTemplateLabel": "Voice Notes",
+          "fieldTemplateType": "voice_text",
+          "fieldTemplateRequired": 0,
+          "fieldOrderNumber": 4
+        }
+      ]
+    }
+  ]
+}
