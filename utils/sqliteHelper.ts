@@ -309,6 +309,15 @@ export const sqliteHelper = {
       );
     },
 
+    /** Update only the userTheme column — avoids touching NOT NULL fields. */
+    updateTheme: async (userId: number, theme: string): Promise<void> => {
+      const database = await getDb();
+      await database.runAsync(
+        `UPDATE "User" SET userTheme = ?, updatedAt = ? WHERE userId = ?`,
+        [theme, now(), userId],
+      );
+    },
+
     /** Delete a user and all cascaded records. */
     delete: async (userId: number): Promise<void> => {
       const database = await getDb();

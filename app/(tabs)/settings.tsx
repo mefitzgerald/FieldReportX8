@@ -17,10 +17,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 export default function SettingsScreen() {
   // Pull auth actions from context — logout clears Firebase session and
   // AsyncStorage cache, deleteAccount also removes the SQLite user record
-  const { logout, deleteAccount } = useAuth();
-  // Pull the current theme from context to set the StatusBar style accordingly. Apparently 
-  // Android doesn't automatically switch the status bar text colour based on the background color like iOS does, 
-  // so we need to set it manually here. Also somtimes expo go just ignores this as its a butthead. When I switch to dev build it should be fine. 
+  const { user, logout, deleteAccount } = useAuth();
+  // Pull the current theme from context to set the StatusBar style accordingly. Apparently
+  // Android doesn't automatically switch the status bar text colour based on the background color like iOS does,
+  // so we need to set it manually here. Also somtimes expo go just ignores this as its a butthead. When I switch to dev build it should be fine.
   const { theme } = useTheme();
 
   // ── Handlers ─────────────────────────────────────────────────────────────
@@ -93,7 +93,7 @@ export default function SettingsScreen() {
           <Text className="text-sm font-semibold text-textSecondary uppercase tracking-widest">
             Appearance
           </Text>
-          <ThemeSelector />
+          <ThemeSelector firebaseUid={user?.uid} />
         </View>
 
         {/* ── Templates ───────────────────────────────────────────────────── */}

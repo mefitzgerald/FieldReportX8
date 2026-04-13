@@ -12,8 +12,6 @@ const MAP_HEIGHT = 220;
 // How zoomed in the map appears — smaller delta = more zoomed in
 const DEFAULT_DELTA = 0.005;
 
-// Milliseconds to wait after onMapReady before snapping — gives tiles time to load
-const SNAPSHOT_DELAY_MS = 800;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -70,6 +68,14 @@ export const GpsMapInputField = ({ onChange, value }: GpsMapInputFieldProps) => 
   // mapRef lets us call takeSnapshot() imperatively
   const mapRef = useRef<MapView>(null);
 
+  // Guards against onRegionChangeComplete firing multiple times for the same
+  // capture — reset to false whenever pendingCoords changes (new capture).
+  const hasSnappedRef = useRef(false);
+
+  useEffect(() => {
+    hasSnappedRef.current = false;
+  }, [pendingCoords]);
+
   // Re-seed pendingCoords if the value changes externally (e.g. form reset)
   useEffect(() => {
     if (!isImageUri(value)) {
@@ -118,8 +124,9 @@ export const GpsMapInputField = ({ onChange, value }: GpsMapInputFieldProps) => 
 
   // ── Save map snapshot ─────────────────────────────────────────────────────
 
-  // Called automatically by onMapReady (after a short delay for tiles to load).
-  // Also called manually via the retry button if a previous snapshot failed.
+  // Called automatically by onMapLoaded — fires once tiles are fully rendered,
+  // which is the correct signal that the snapshot will not be blank.
+  // Also callable via the retry button if a previous attempt failed.
   // Copies the snapshot out of the temp directory into documents for persistence.
   const handleSnapshot = async () => {
     if (!mapRef.current) return;
@@ -177,7 +184,8 @@ export const GpsMapInputField = ({ onChange, value }: GpsMapInputFieldProps) => 
           {pendingCoords && region ? (
             // pointerEvents="none" prevents the map from intercepting touches
             // and fighting with the parent ScrollView.
-            // The key forces a remount on re-capture so onMapReady fires again.
+            // The key forces a remount on re-capture so onMapLoaded fires
+            // fresh for the new coordinates.
             <View style={{ width: MAP_WIDTH, height: MAP_HEIGHT }} pointerEvents="none">
               <MapView
                 key={mapKey}
@@ -188,9 +196,13 @@ export const GpsMapInputField = ({ onChange, value }: GpsMapInputFieldProps) => 
                 zoomEnabled={false}
                 pitchEnabled={false}
                 rotateEnabled={false}
-                onMapReady={() => {
-                  // Short delay lets tiles start loading before the snapshot is taken
-                  setTimeout(handleSnapshot, SNAPSHOT_DELAY_MS);
+                onMapLoaded={() => {
+                  // onMapLoaded fires after tiles are fully rendered — the correct
+                  // signal for a snapshot. guarded by hasSnappedRef so it only
+                  // fires once per capture even if the event triggers more than once.
+                  if (hasSnappedRef.current) return;
+                  hasSnappedRef.current = true;
+                  handleSnapshot();
                 }}
               >
                 <Marker coordinate={pendingCoords} />

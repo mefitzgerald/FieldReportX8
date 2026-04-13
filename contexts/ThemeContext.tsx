@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { sqliteHelper } from "@/utils/sqliteHelper";
 import { vars } from "nativewind";
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { View } from "react-native";
@@ -11,8 +12,11 @@ export type ThemeName = "light" | "dark" | "forest" | "ocean";
 interface ThemeContextValue {
   /** The currently active theme name */
   theme: ThemeName;
-  /** Change the theme and persist the choice to AsyncStorage */
-  setTheme: (theme: ThemeName) => Promise<void>;
+  /**
+   * Change the theme and persist to AsyncStorage.
+   * Pass firebaseUid to also write the preference to the User table.
+   */
+  setTheme: (theme: ThemeName, firebaseUid?: string) => Promise<void>;
   colours: typeof THEME_COLOURS[ThemeName];
 }
 
@@ -99,36 +103,58 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const systemColorScheme = useColorScheme();
-  const [theme, setThemeState] = useState<ThemeName>("light");
 
-  // Load the saved theme from AsyncStorage on mount.
-  // Falls back to the system color scheme, then defaults to light.
+  // null = no manual preference saved — follow the device theme reactively
+  const [manualTheme, setManualTheme] = useState<ThemeName | null>(null);
+
+  // Initialise immediately from the system scheme so there is no blank flash
+  // before AsyncStorage resolves. manualTheme may override this once loaded.
+  const [theme, setThemeState] = useState<ThemeName>(
+    systemColorScheme === "dark" ? "dark" : "light"
+  );
+
+  // On mount: load any saved manual preference from AsyncStorage.
+  // If none exists the app stays in system-following mode.
   useEffect(() => {
-    const loadTheme = async () => {
-      try {
-        const saved = await AsyncStorage.getItem(THEME_STORAGE_KEY);
+    AsyncStorage.getItem(THEME_STORAGE_KEY)
+      .then((saved) => {
         if (saved && saved in THEME_VARS) {
           console.log("[ThemeProvider] Loaded saved theme:", saved);
+          setManualTheme(saved as ThemeName);
           setThemeState(saved as ThemeName);
         } else {
-          // No saved preference — use the system color scheme as default
-          const defaultTheme = systemColorScheme === "dark" ? "dark" : "light";
-          console.log("[ThemeProvider] No saved theme, defaulting to:", defaultTheme);
-          setThemeState(defaultTheme);
+          console.log("[ThemeProvider] No saved theme — following system:", systemColorScheme);
         }
-      } catch (error) {
-        console.error("[ThemeProvider] Failed to load theme:", error);
-      }
-    };
-    loadTheme();
+      })
+      .catch((error) => console.error("[ThemeProvider] Failed to load theme:", error));
   }, []);
 
-  // Update the active theme and persist the choice to AsyncStorage
-  const setTheme = useCallback(async (newTheme: ThemeName) => {
+  // Reactively follow the device theme whenever no manual preference is set.
+  // When the user has chosen a theme explicitly this effect does nothing.
+  useEffect(() => {
+    if (manualTheme === null) {
+      const resolved = systemColorScheme === "dark" ? "dark" : "light";
+      console.log("[ThemeProvider] System scheme changed, applying:", resolved);
+      setThemeState(resolved);
+    }
+  }, [systemColorScheme, manualTheme]);
+
+  // User explicitly picks a theme.
+  // Always persists to AsyncStorage; also writes to the User table when
+  // userId is provided — called from ThemeSelector via the settings screen.
+  const setTheme = useCallback(async (newTheme: ThemeName, firebaseUid?: string) => {
     try {
+      setManualTheme(newTheme);
       setThemeState(newTheme);
       await AsyncStorage.setItem(THEME_STORAGE_KEY, newTheme);
-      console.log("[ThemeProvider] Theme changed to:", newTheme);
+      console.log("[ThemeProvider] Theme set to:", newTheme);
+      if (firebaseUid) {
+        const localUser = await sqliteHelper.user.getByFirebaseUid(firebaseUid);
+        if (localUser?.userId) {
+          await sqliteHelper.user.updateTheme(localUser.userId, newTheme);
+          console.log("[ThemeProvider] Theme saved to User table for userId:", localUser.userId);
+        }
+      }
     } catch (error) {
       console.error("[ThemeProvider] Failed to save theme:", error);
     }

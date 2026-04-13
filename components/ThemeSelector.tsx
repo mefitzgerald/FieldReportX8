@@ -1,7 +1,12 @@
 import { THEME_OPTIONS, ThemeName, useTheme } from "@/contexts/ThemeContext";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-export function ThemeSelector() {
+interface ThemeSelectorProps {
+  /** Firebase UID — passed to setTheme so it can persist the choice to the User table */
+  firebaseUid?: string;
+}
+
+export function ThemeSelector({ firebaseUid }: ThemeSelectorProps) {
   const { theme, setTheme, colours } = useTheme();
 
   return (
@@ -16,7 +21,7 @@ export function ThemeSelector() {
               { borderColor: colours.border },
               theme === option.value && { backgroundColor: colours.tint, borderColor: colours.tint },
             ]}
-            onPress={() => setTheme(option.value as ThemeName)}
+            onPress={() => setTheme(option.value as ThemeName, firebaseUid)}
           >
             <Text
               style={[
