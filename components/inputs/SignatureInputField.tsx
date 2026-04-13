@@ -7,7 +7,7 @@ import {
   Rect,
 } from "@shopify/react-native-skia";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import { File, Paths } from "expo-file-system/next";
+import { File, Paths } from "expo-file-system";
 import { useRef, useState } from "react";
 import { Dimensions, Image, Pressable, Text, View } from "react-native";
 
@@ -44,7 +44,7 @@ export const SignatureInputField = ({ onChange, value }: SignatureInputFieldProp
   const [isDrawing, setIsDrawing] = useState(false);
 
   // canvasRef lets us call makeImageSnapshot() on the canvas imperatively
-  const canvasRef = useRef(null);
+  const canvasRef = useRef<any>(null);
 
   // Load SpaceMono for rendering the timestamp text on the Skia canvas.
   // useFont must be called unconditionally (React hook rules) — the SkiaText

@@ -1,6 +1,7 @@
 import { getCurrentLocation, formatGpsString } from "@/utils/locationHelper";
-import { useState } from "react";
-import { ActivityIndicator, Dimensions, Pressable, Text, View } from "react-native";
+import { File, Paths } from "expo-file-system";
+import { useEffect, useRef, useState } from "react";
+import { ActivityIndicator, Dimensions, Image, Pressable, Text, View } from "react-native";
 import MapView, { Marker, Region } from "react-native-maps";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -11,19 +12,26 @@ const MAP_HEIGHT = 220;
 // How zoomed in the map appears — smaller delta = more zoomed in
 const DEFAULT_DELTA = 0.005;
 
+// Milliseconds to wait after onMapReady before snapping — gives tiles time to load
+const SNAPSHOT_DELAY_MS = 800;
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface GpsMapInputFieldProps {
   onChange: (value: string) => void;
-  value: string; // "latitude,longitude" string, or ""
+  value: string; // file:// URI of saved map snapshot image, or ""
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-// Parses a stored "lat,lng" string back into numeric coords for the map.
-// Returns null if the string is missing or malformed.
+// Returns true if the stored value is a saved image URI.
+const isImageUri = (value: string): boolean =>
+  value.startsWith("file://") || value.startsWith("content://");
+
+// Parses a legacy "lat,lng" string into coords for backwards compatibility.
+// Returns null if the string is missing, malformed, or already an image URI.
 const parseCoords = (value: string): { latitude: number; longitude: number } | null => {
-  if (!value) return null;
+  if (!value || isImageUri(value)) return null;
   const parts = value.split(",");
   if (parts.length !== 2) return null;
   const latitude = parseFloat(parts[0]);
@@ -34,25 +42,58 @@ const parseCoords = (value: string): { latitude: number; longitude: number } | n
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-// Captures GPS coordinates and renders them as a pinned marker on a map.
-// The stored value is a "lat,lng" string — same format as GpsInputField and
-// CameraInputField GPS tags, keeping location data consistent across the app.
+// Captures GPS coordinates, renders a map tile with a marker, then automatically
+// saves a PNG snapshot of the map once the map is ready. The stored value is a
+// file:// URI so it embeds directly in PDF exports — consistent with camera and
+// signature fields.
+//
+// The snapshot is triggered by onMapReady (with a short tile-load delay) so the
+// user only needs to tap "Capture Location" — no second action required.
+//
+// The MapView is keyed on the coordinate string so re-capturing location forces
+// a remount, which re-fires onMapReady and produces a fresh snapshot.
+//
+// liteMode is intentionally NOT used: lite mode blocks takeSnapshot() on Android.
+// Touch conflicts with the parent ScrollView are prevented by pointerEvents="none".
 
 export const GpsMapInputField = ({ onChange, value }: GpsMapInputFieldProps) => {
   const [capturing, setCapturing] = useState(false);
+  const [snapping, setSnapping] = useState(false);
   const [error, setError] = useState("");
 
-  const coords = parseCoords(value);
+  // Internal GPS coords for rendering the map. Seeded from a legacy "lat,lng"
+  // value on mount so existing reports still show the map in edit mode.
+  const [pendingCoords, setPendingCoords] = useState<{ latitude: number; longitude: number } | null>(
+    () => parseCoords(value)
+  );
 
-  // Build the MapView region from stored coords — centres the map on the marker
-  const region: Region | undefined = coords
+  // mapRef lets us call takeSnapshot() imperatively
+  const mapRef = useRef<MapView>(null);
+
+  // Re-seed pendingCoords if the value changes externally (e.g. form reset)
+  useEffect(() => {
+    if (!isImageUri(value)) {
+      setPendingCoords(parseCoords(value));
+    }
+  }, [value]);
+
+  // MapView region centred on the pending coordinates
+  const region: Region | undefined = pendingCoords
     ? {
-        latitude: coords.latitude,
-        longitude: coords.longitude,
+        latitude: pendingCoords.latitude,
+        longitude: pendingCoords.longitude,
         latitudeDelta: DEFAULT_DELTA,
         longitudeDelta: DEFAULT_DELTA,
       }
     : undefined;
+
+  // Stable key for the MapView — changing it forces a remount so onMapReady
+  // fires again when the user re-captures location.
+  const mapKey = pendingCoords
+    ? `${pendingCoords.latitude},${pendingCoords.longitude}`
+    : "empty";
+
+  // ── Capture GPS ───────────────────────────────────────────────────────────
 
   const handleCapture = async () => {
     try {
@@ -65,9 +106,8 @@ export const GpsMapInputField = ({ onChange, value }: GpsMapInputFieldProps) => 
         return;
       }
 
-      const gpsString = formatGpsString(location);
-      console.log("[GpsMapInputField] Captured GPS:", gpsString);
-      onChange(gpsString);
+      setPendingCoords({ latitude: location.latitude, longitude: location.longitude });
+      console.log("[GpsMapInputField] Captured GPS:", formatGpsString(location));
     } catch (err) {
       console.error("[GpsMapInputField] Error capturing GPS:", err);
       setError("Failed to capture location.");
@@ -76,68 +116,146 @@ export const GpsMapInputField = ({ onChange, value }: GpsMapInputFieldProps) => 
     }
   };
 
+  // ── Save map snapshot ─────────────────────────────────────────────────────
+
+  // Called automatically by onMapReady (after a short delay for tiles to load).
+  // Also called manually via the retry button if a previous snapshot failed.
+  // Copies the snapshot out of the temp directory into documents for persistence.
+  const handleSnapshot = async () => {
+    if (!mapRef.current) return;
+    try {
+      setSnapping(true);
+      setError("");
+
+      const tempUri = await mapRef.current.takeSnapshot({
+        format: "png",
+        quality: 0.8,
+        result: "file",
+      });
+
+      // Copy from the temp location to the document directory so the file
+      // survives cache clears and persists with the saved report.
+      const destFile = new File(Paths.document, `map_${Date.now()}.png`);
+      new File(tempUri).copy(destFile);
+
+      console.log("[GpsMapInputField] Saved map snapshot to:", destFile.uri);
+      onChange(destFile.uri);
+    } catch (err) {
+      console.error("[GpsMapInputField] Snapshot failed:", err);
+      setError("Map snapshot failed. Tap retry to try again.");
+    } finally {
+      setSnapping(false);
+    }
+  };
+
+  // ── Render ────────────────────────────────────────────────────────────────
+
   return (
     <View className="bg-surface border border-border rounded-xl p-4 gap-3">
 
-      {/* Map — only shown once we have coordinates.
-          MapView renders a native Google/Apple map tile with a Marker at the
-          captured position. scrollEnabled and zoomEnabled are disabled so the
-          map doesn't fight with the parent ScrollView for touch events. */}
-      {coords && region ? (
-        // pointerEvents="none" on the wrapper prevents the map from
-        // intercepting touches and fighting with the parent ScrollView.
-        // liteMode renders a static map snapshot on Android instead of
-        // a fully interactive map — much more stable inside ScrollViews.
-        <View style={{ width: MAP_WIDTH, height: MAP_HEIGHT }} pointerEvents="none">
-          <MapView
+      {isImageUri(value) ? (
+        // ── Saved state — show the snapshot image ──────────────────────────
+        <View className="gap-3">
+          <Image
+            source={{ uri: value }}
             style={{ width: MAP_WIDTH, height: MAP_HEIGHT, borderRadius: 8 }}
-            region={region}
-            scrollEnabled={false}
-            zoomEnabled={false}
-            pitchEnabled={false}
-            rotateEnabled={false}
-            liteMode={true}
+            resizeMode="cover"
+          />
+          <Pressable
+            className="py-3 rounded-xl items-center border border-border active:opacity-60"
+            onPress={() => {
+              onChange("");
+              setPendingCoords(null);
+            }}
           >
-            <Marker coordinate={coords} />
-          </MapView>
+            <Text className="text-text font-medium">Re-capture Location</Text>
+          </Pressable>
         </View>
       ) : (
-        // Explicit style dimensions required — native views like MapView need
-        // pixel dimensions from style, not className, to measure correctly
-        <View
-          style={{
-            width: MAP_WIDTH,
-            height: MAP_HEIGHT,
-            borderRadius: 8,
-            borderWidth: 1,
-            borderColor: "#ccc",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <Text className="text-textSecondary text-sm italic">No location captured yet</Text>
-        </View>
+        // ── Capture state ─────────────────────────────────────────────────
+        <>
+          {pendingCoords && region ? (
+            // pointerEvents="none" prevents the map from intercepting touches
+            // and fighting with the parent ScrollView.
+            // The key forces a remount on re-capture so onMapReady fires again.
+            <View style={{ width: MAP_WIDTH, height: MAP_HEIGHT }} pointerEvents="none">
+              <MapView
+                key={mapKey}
+                ref={mapRef}
+                style={{ width: MAP_WIDTH, height: MAP_HEIGHT, borderRadius: 8 }}
+                region={region}
+                scrollEnabled={false}
+                zoomEnabled={false}
+                pitchEnabled={false}
+                rotateEnabled={false}
+                onMapReady={() => {
+                  // Short delay lets tiles start loading before the snapshot is taken
+                  setTimeout(handleSnapshot, SNAPSHOT_DELAY_MS);
+                }}
+              >
+                <Marker coordinate={pendingCoords} />
+              </MapView>
+
+              {/* Overlay spinner while snapshot is being taken */}
+              {snapping && (
+                <View
+                  style={{
+                    position: "absolute",
+                    width: MAP_WIDTH,
+                    height: MAP_HEIGHT,
+                    borderRadius: 8,
+                    backgroundColor: "rgba(0,0,0,0.25)",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <ActivityIndicator color="#fff" size="large" />
+                  <Text style={{ color: "#fff", marginTop: 8, fontSize: 13 }}>Saving map…</Text>
+                </View>
+              )}
+            </View>
+          ) : (
+            <View
+              style={{
+                width: MAP_WIDTH,
+                height: MAP_HEIGHT,
+                borderRadius: 8,
+                borderWidth: 1,
+                borderColor: "#ccc",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Text className="text-textSecondary text-sm italic">No location captured yet</Text>
+            </View>
+          )}
+
+          {/* Capture button */}
+          <Pressable
+            className={`py-3 rounded-xl items-center bg-primary ${capturing || snapping ? "opacity-60" : "active:opacity-80"}`}
+            onPress={handleCapture}
+            disabled={capturing || snapping}
+          >
+            {capturing ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text className="text-white font-bold">
+                {pendingCoords ? "Re-capture Location" : "Capture Location"}
+              </Text>
+            )}
+          </Pressable>
+
+          {/* Retry button — only shown if the auto-snapshot failed */}
+          {!!error && pendingCoords && (
+            <Pressable
+              className="py-3 rounded-xl items-center border border-danger active:opacity-60"
+              onPress={handleSnapshot}
+            >
+              <Text className="text-danger font-medium">Retry Snapshot</Text>
+            </Pressable>
+          )}
+        </>
       )}
-
-      {/* Coordinates display */}
-      {value ? (
-        <Text className="text-text font-mono text-xs text-center">{value}</Text>
-      ) : null}
-
-      {/* Capture button */}
-      <Pressable
-        className={`py-3 rounded-xl items-center bg-primary ${capturing ? "opacity-60" : "active:opacity-80"}`}
-        onPress={handleCapture}
-        disabled={capturing}
-      >
-        {capturing ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text className="text-white font-bold">
-            {value ? "Re-capture Location" : "Capture Location"}
-          </Text>
-        )}
-      </Pressable>
 
       {/* Error message */}
       {!!error && <Text className="text-danger text-xs text-center">{error}</Text>}

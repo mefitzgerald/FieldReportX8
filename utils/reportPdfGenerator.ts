@@ -74,13 +74,14 @@ const buildReportHtml = async (data: PdfReportData): Promise<string> => {
     let valueHtml = "<em>No data</em>";
 
     if (field.fieldData) {
-      if (type === "camera") {
-        // Convert photo URI to base64 for inline embedding
+      if (type === "camera" || type === "sign" || type === "gps_map") {
+        // Convert image URI to base64 for inline embedding.
+        // camera = annotated photo, sign = signature PNG, gps_map = map snapshot PNG.
         const base64Image = await imageUriToBase64(field.fieldData);
         if (base64Image) {
           valueHtml = `<img src="${base64Image}" style="max-width: 100%; max-height: 300px; border-radius: 6px; object-fit: contain;" />`;
         } else {
-          valueHtml = "<em>Photo unavailable</em>";
+          valueHtml = "<em>Image unavailable</em>";
         }
       } else if (type === "sensor_gyro" || type === "sensor_speed") {
         // Parse sensor JSON and display as a small table

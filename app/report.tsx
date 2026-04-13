@@ -268,12 +268,21 @@ export default function ReportScreen() {
             fieldData,
           });
 
-          // Camera fields — also save to Report_Media for gallery/export use.
-          // capturedGps[fieldKey] holds the "lat,lng" string set by onGpsCapture
-          // when the photo was taken. Will be null if GPS was unavailable or denied.
-          if (field.fieldTemplateType === "camera" && typeof rawValue === "string") {
-            const gps = capturedGps[fieldKey] ?? null;
-            console.log("[ReportScreen] Saving camera field to Report_Media, GPS:", gps);
+          // Image fields — also save to Report_Media for gallery/export use.
+          // camera: annotated photo with GPS tag from onGpsCapture.
+          // sign: signature PNG — no GPS needed.
+          // gps_map: map snapshot PNG — GPS coords are baked into the image visually.
+          if (
+            (field.fieldTemplateType === "camera" ||
+              field.fieldTemplateType === "sign" ||
+              field.fieldTemplateType === "gps_map") &&
+            typeof rawValue === "string" &&
+            rawValue
+          ) {
+            const gps = field.fieldTemplateType === "camera"
+              ? (capturedGps[fieldKey] ?? null)
+              : null;
+            console.log("[ReportScreen] Saving", field.fieldTemplateType, "field to Report_Media");
             await sqliteHelper.reportMedia.save({
               fieldId: savedFieldId,
               mediaType: "image",
