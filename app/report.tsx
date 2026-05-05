@@ -24,6 +24,7 @@ import { Controller, useForm } from "react-hook-form";
 import {
   ActivityIndicator,
   Alert,
+  findNodeHandle,
   Pressable,
   ScrollView,
   Text,
@@ -495,8 +496,10 @@ export default function ReportScreen() {
                         if (cameraFieldRef.current && scrollRef.current) {
                           // Measure the camera field's y offset within the ScrollView
                           // then scroll to it so the full annotation UI is visible
+                          const node = findNodeHandle(scrollRef.current);
+                          if (!node) return;
                           cameraFieldRef.current.measureLayout(
-                            scrollRef.current,
+                            node,
                             (_x: number, y: number) => {
                               scrollRef.current?.scrollTo({
                                 y,

@@ -9,6 +9,10 @@ let db: SQLite.SQLiteDatabase | null = null;
 export const getDb = async (): Promise<SQLite.SQLiteDatabase> => {
   if (!db) {
     db = await SQLite.openDatabaseAsync(DB_NAME);
+    await db.execAsync(`
+      PRAGMA journal_mode = WAL;
+      PRAGMA busy_timeout = 5000;
+    `);
   }
   return db;
 };
