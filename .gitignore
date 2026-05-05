@@ -35,6 +35,8 @@ yarn-error.*
 .env*.local
 firebaseConfig.js
 app.json
+google-services.json
+google-services
 
 
 # typescript

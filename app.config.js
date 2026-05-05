@@ -12,6 +12,10 @@ export default {
       resizeMode: "contain",
       backgroundColor: "#ffffff",
     },
+    androidStatusBar: {
+      backgroundColor: "#00000000",
+      translucent: true,
+    },
     ios: {
       supportsTablet: true,
       infoPlist: {
@@ -22,6 +26,7 @@ export default {
       },
     },
     android: {
+      googleServicesFile: "./google-services.json",
       package: "com.fieldreportx.app",
       adaptiveIcon: {
         foregroundImage: "./assets/images/reportXlogo.png",
@@ -95,6 +100,12 @@ export default {
         "react-native-maps",
         {
           androidGoogleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY,
+        },
+      ],
+      [
+        "react-native-google-mobile-ads",
+        {
+          androidAppId: process.env.ADMOB_ANDROID_APP_ID,
         },
       ],
     ],

@@ -19,7 +19,8 @@ import React, {
   useEffect,
   useState,
 } from "react";
-import { auth } from "../firebaseConfig"; // Your initialized Firebase auth
+import { registerForPushNotifications } from "@/utils/notificationHelper";
+import { auth } from "../firebaseConfig";
 
 // Types for our auth context value, including user info and auth actions.
 
@@ -81,6 +82,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
       await storageHelper.user.save(firebaseUser); // keep cache in sync
+      if (firebaseUser) {
+        registerForPushNotifications(firebaseUser.uid).catch((e) =>
+          console.warn("[AuthContext] Push registration failed:", e)
+        );
+      }
       setIsLoading(false);
     });
 

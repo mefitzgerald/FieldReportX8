@@ -24,7 +24,6 @@ import { Controller, useForm } from "react-hook-form";
 import {
   ActivityIndicator,
   Alert,
-  findNodeHandle,
   Pressable,
   ScrollView,
   Text,
@@ -108,10 +107,10 @@ export default function ReportScreen() {
   // Disabled while a camera field is in annotation phase so the pan gesture
   // reaches Skia instead of being intercepted by the ScrollView.
   const [scrollEnabled, setScrollEnabled] = useState(true);
+  const [cameraFieldY, setCameraFieldY] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
   // Holds a ref to the camera field's View container so we can measure
   // its y offset and scroll to it precisely when annotation starts.
-  const cameraFieldRef = useRef<View>(null);
 
   // Stores GPS coordinates keyed by form field key (e.g. "field_123").
   // Populated by CameraInputField's onGpsCapture callback when a photo is taken.
@@ -454,8 +453,9 @@ export default function ReportScreen() {
     return (
       <View
         key={fieldKey}
-        // Camera fields get a ref so we can measure y offset for annotation scroll
-        ref={field.fieldTemplateType === "camera" ? cameraFieldRef : undefined}
+        onLayout={field.fieldTemplateType === "camera"
+          ? (e) => setCameraFieldY(e.nativeEvent.layout.y)
+          : undefined}
         className="mb-6"
       >
         {/* Field label — uppercase with red asterisk for required fields */}
@@ -493,22 +493,7 @@ export default function ReportScreen() {
                     onAnnotatingChange={(annotating) => {
                       setScrollEnabled(!annotating);
                       if (annotating) {
-                        if (cameraFieldRef.current && scrollRef.current) {
-                          // Measure the camera field's y offset within the ScrollView
-                          // then scroll to it so the full annotation UI is visible
-                          const node = findNodeHandle(scrollRef.current);
-                          if (!node) return;
-                          cameraFieldRef.current.measureLayout(
-                            node,
-                            (_x: number, y: number) => {
-                              scrollRef.current?.scrollTo({
-                                y,
-                                animated: true,
-                              });
-                            },
-                            () => {},
-                          );
-                        }
+                        scrollRef.current?.scrollTo({ y: cameraFieldY, animated: true });
                       }
                     }}
                   />
@@ -583,7 +568,7 @@ export default function ReportScreen() {
                 return (
                   <RatingInputField
                     onChange={onChange}
-                    value={(value as number) ?? null}
+                    value={(value as unknown as number) ?? null}
                   />
                 );
               // Freehand signature pad — saves as image file, stores URI
