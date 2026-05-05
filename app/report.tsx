@@ -16,6 +16,7 @@ import {
   ReportTemplateRow,
   sqliteHelper,
 } from "@/utils/sqliteHelper";
+import { useBatteryLevel } from "expo-battery";
 import Constants from "expo-constants";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
@@ -40,10 +41,10 @@ type FormValues = Record<string, string | object | null>;
 
 // Status options shown in the dropdown picker
 const STATUS_OPTIONS: { label: string; value: ReportStatus }[] = [
-  { label: "Draft",       value: "draft"       },
+  { label: "Draft", value: "draft" },
   { label: "In Progress", value: "in_progress" },
-  { label: "Completed",   value: "completed"   },
-  { label: "Archived",    value: "archived"    },
+  { label: "Completed", value: "completed" },
+  { label: "Archived", value: "archived" },
 ];
 
 // ─── Checksum helper ──────────────────────────────────────────────────────────
@@ -73,6 +74,25 @@ export default function ReportScreen() {
   }>();
   const { user } = useAuth();
 
+  // Battery level check on mount — shows alert if battery is critically low to warn about potential data loss.
+  const batteryLevel = useBatteryLevel(); //live subscription so will update even if report is already open
+  const batteryAlertShown = useRef(false); // will only alert once not every time data recieved
+
+  useEffect(() => {
+    if (
+      !batteryAlertShown.current &&
+      batteryLevel !== -1 &&
+      batteryLevel < 0.15
+    ) {
+      batteryAlertShown.current = true;
+      Alert.alert(
+        "Low Battery",
+        `Your battery is at ${Math.round(batteryLevel * 100)}%. Save your report now to avoid losing your work.`,
+        [{ text: "OK" }],
+      );
+    }
+  }, [batteryLevel]);
+
   // Determine if we are editing an existing report or creating a new one
   const isEditing = !!reportId;
 
@@ -98,7 +118,12 @@ export default function ReportScreen() {
   const [capturedGps, setCapturedGps] = useState<Record<string, string>>({});
 
   // Dynamic field names based on fieldTemplateId e.g. "field_123"
-  const { control, handleSubmit, reset, formState: { errors } } = useForm<FormValues>();
+  const {
+    control,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<FormValues>();
 
   // ── Load data on mount ────────────────────────────────────────────────────
 
@@ -119,7 +144,8 @@ export default function ReportScreen() {
       const id = parseInt(templateId, 10);
       const loadedTemplate = await sqliteHelper.reportTemplate.getById(id);
       setTemplate(loadedTemplate ?? null);
-      const templateFields = await sqliteHelper.reportFieldTemplate.getAllByTemplateId(id);
+      const templateFields =
+        await sqliteHelper.reportFieldTemplate.getAllByTemplateId(id);
       setFields(templateFields);
       console.log("[ReportScreen] Loaded", templateFields.length, "fields");
     } catch (error) {
@@ -158,7 +184,7 @@ export default function ReportScreen() {
           fieldTemplateType: f.fieldType,
           fieldTemplateRequired: f.fieldRequired,
           fieldOrderNumber: f.fieldOrderNumber,
-        })
+        }),
       );
       setFields(mappedFields);
 
@@ -176,7 +202,11 @@ export default function ReportScreen() {
         }
       }
       reset(defaultValues);
-      console.log("[ReportScreen] Loaded", savedFields.length, "existing fields");
+      console.log(
+        "[ReportScreen] Loaded",
+        savedFields.length,
+        "existing fields",
+      );
     } catch (error) {
       console.error("[ReportScreen] Failed to load existing report:", error);
     } finally {
@@ -194,7 +224,8 @@ export default function ReportScreen() {
       console.log("[ReportScreen] Submitting report, isEditing:", isEditing);
 
       const localUser = await sqliteHelper.user.getByFirebaseUid(user.uid);
-      if (!localUser?.userId) throw new Error("Could not find local user record.");
+      if (!localUser?.userId)
+        throw new Error("Could not find local user record.");
 
       const timestamp = new Date().toISOString();
       const checksum = generateChecksum({
@@ -216,9 +247,12 @@ export default function ReportScreen() {
         for (const field of fields) {
           const fieldKey = `field_${field.fieldTemplateId}`;
           const rawValue = formData[fieldKey];
-          const fieldData = rawValue != null
-            ? typeof rawValue === "object" ? JSON.stringify(rawValue) : String(rawValue)
-            : null;
+          const fieldData =
+            rawValue != null
+              ? typeof rawValue === "object"
+                ? JSON.stringify(rawValue)
+                : String(rawValue)
+              : null;
 
           if (field.fieldTemplateId) {
             await sqliteHelper.reportField.update(field.fieldTemplateId, {
@@ -242,8 +276,10 @@ export default function ReportScreen() {
           reportCategory: template.reportTemplateCategory,
           reportLayout: template.reportTemplateLayout,
           reportLayoutLogo: template.reportTemplateLayoutLogo ?? 0,
-          reportLayoutCompanyName: template.reportTemplateLayoutCompanyName ?? 0,
-          reportLayoutContactDetails: template.reportTemplateLayoutContactDetails ?? 0,
+          reportLayoutCompanyName:
+            template.reportTemplateLayoutCompanyName ?? 0,
+          reportLayoutContactDetails:
+            template.reportTemplateLayoutContactDetails ?? 0,
           reportFieldCount: fields.length,
           reportStatus,
           reportChecksum: checksum,
@@ -255,9 +291,12 @@ export default function ReportScreen() {
         for (const field of fields) {
           const fieldKey = `field_${field.fieldTemplateId}`;
           const rawValue = formData[fieldKey];
-          const fieldData = rawValue != null
-            ? typeof rawValue === "object" ? JSON.stringify(rawValue) : String(rawValue)
-            : null;
+          const fieldData =
+            rawValue != null
+              ? typeof rawValue === "object"
+                ? JSON.stringify(rawValue)
+                : String(rawValue)
+              : null;
 
           const savedFieldId = await sqliteHelper.reportField.save({
             reportId: newReportId,
@@ -279,10 +318,15 @@ export default function ReportScreen() {
             typeof rawValue === "string" &&
             rawValue
           ) {
-            const gps = field.fieldTemplateType === "camera"
-              ? (capturedGps[fieldKey] ?? null)
-              : null;
-            console.log("[ReportScreen] Saving", field.fieldTemplateType, "field to Report_Media");
+            const gps =
+              field.fieldTemplateType === "camera"
+                ? (capturedGps[fieldKey] ?? null)
+                : null;
+            console.log(
+              "[ReportScreen] Saving",
+              field.fieldTemplateType,
+              "field to Report_Media",
+            );
             await sqliteHelper.reportMedia.save({
               fieldId: savedFieldId,
               mediaType: "image",
@@ -311,8 +355,10 @@ export default function ReportScreen() {
 
       Alert.alert(
         isEditing ? "Report Updated" : "Report Saved",
-        isEditing ? "Your report has been updated." : "Your report has been saved.",
-        [{ text: "OK", onPress: () => router.back() }]
+        isEditing
+          ? "Your report has been updated."
+          : "Your report has been saved.",
+        [{ text: "OK", onPress: () => router.back() }],
       );
     } catch (error: any) {
       console.error("[ReportScreen] Failed to save report:", error);
@@ -335,10 +381,13 @@ export default function ReportScreen() {
 
     try {
       setExporting(true);
-      console.log("[ReportScreen] Preparing PDF for report:", existingReport.reportId);
+      console.log(
+        "[ReportScreen] Preparing PDF for report:",
+        existingReport.reportId,
+      );
 
       const savedFields = await sqliteHelper.reportField.getAllByReportId(
-        existingReport.reportId!
+        existingReport.reportId!,
       );
 
       // Load business profile only if the report layout requires it
@@ -350,7 +399,9 @@ export default function ReportScreen() {
       ) {
         const localUser = await sqliteHelper.user.getByFirebaseUid(user!.uid);
         if (localUser?.userId) {
-          businessProfile = await sqliteHelper.businessProfile.getByUserId(localUser.userId);
+          businessProfile = await sqliteHelper.businessProfile.getByUserId(
+            localUser.userId,
+          );
         }
       }
 
@@ -381,7 +432,7 @@ export default function ReportScreen() {
               await shareReportPdf(pdfData);
             },
           },
-        ]
+        ],
       );
     } catch (error: any) {
       console.error("[ReportScreen] PDF export failed:", error);
@@ -415,7 +466,11 @@ export default function ReportScreen() {
         <Controller
           control={control}
           name={fieldKey}
-          rules={isRequired ? { required: `${field.fieldTemplateLabel} is required` } : {}}
+          rules={
+            isRequired
+              ? { required: `${field.fieldTemplateLabel} is required` }
+              : {}
+          }
           render={({ field: { onChange, value } }) => {
             switch (field.fieldTemplateType) {
               case "camera":
@@ -426,7 +481,12 @@ export default function ReportScreen() {
                     // When a photo is taken, store the GPS string against this field key
                     // so we can write it to Report_Media.mediaGPS on submit.
                     onGpsCapture={(gps) => {
-                      console.log("[ReportScreen] GPS received for", fieldKey, ":", gps);
+                      console.log(
+                        "[ReportScreen] GPS received for",
+                        fieldKey,
+                        ":",
+                        gps,
+                      );
                       setCapturedGps((prev) => ({ ...prev, [fieldKey]: gps }));
                     }}
                     onAnnotatingChange={(annotating) => {
@@ -438,9 +498,12 @@ export default function ReportScreen() {
                           cameraFieldRef.current.measureLayout(
                             scrollRef.current,
                             (_x: number, y: number) => {
-                              scrollRef.current?.scrollTo({ y, animated: true });
+                              scrollRef.current?.scrollTo({
+                                y,
+                                animated: true,
+                              });
                             },
-                            () => {}
+                            () => {},
                           );
                         }
                       }
@@ -586,7 +649,6 @@ export default function ReportScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={["bottom"]}>
-
       {/* Shared header with logo, title and back button */}
       <ScreenHeader title={screenTitle} />
 
@@ -595,7 +657,6 @@ export default function ReportScreen() {
         contentContainerClassName="px-5 py-4 pb-16"
         scrollEnabled={scrollEnabled}
       >
-
         {/* Editing badge — shown when updating an existing report */}
         {isEditing && (
           <Text className="text-primary text-xs font-semibold mb-4">
@@ -605,7 +666,9 @@ export default function ReportScreen() {
 
         {/* ── Status picker ─────────────────────────────────────────────── */}
         <View className="flex-row items-center justify-between mb-2">
-          <Text className="text-sm font-semibold text-textSecondary">Status</Text>
+          <Text className="text-sm font-semibold text-textSecondary">
+            Status
+          </Text>
           <Pressable
             className="border border-border rounded-lg py-2 px-4 active:opacity-50"
             onPress={() => setShowStatusPicker((prev) => !prev)}
@@ -656,7 +719,9 @@ export default function ReportScreen() {
           <Text className="text-white font-bold text-base">
             {submitting
               ? "Saving..."
-              : isEditing ? "Update Report" : "Submit Report"}
+              : isEditing
+                ? "Update Report"
+                : "Submit Report"}
           </Text>
         </Pressable>
 
@@ -674,9 +739,7 @@ export default function ReportScreen() {
             </Text>
           </Pressable>
         )}
-
       </ScrollView>
     </SafeAreaView>
   );
 }
-
