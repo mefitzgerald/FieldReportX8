@@ -583,7 +583,7 @@ export default function ReportScreen() {
                 return (
                   <RatingInputField
                     onChange={onChange}
-                    value={(value as number) ?? null}
+                    value={(value as unknown as number) ?? null}
                   />
                 );
               // Freehand signature pad — saves as image file, stores URI
