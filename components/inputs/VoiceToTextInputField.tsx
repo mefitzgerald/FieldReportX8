@@ -3,7 +3,7 @@ import {
   ExpoSpeechRecognitionModule,
   useSpeechRecognitionEvent,
 } from "expo-speech-recognition";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Platform, Pressable, Text, TextInput, View } from "react-native";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -44,29 +44,41 @@ export const VoiceToTextInputField = ({
   const [errorText, setErrorText] = useState("");
   const [baseText, setBaseText] = useState("");
 
+  // Tracks whether this specific instance started the current recognition session.
+  // useSpeechRecognitionEvent listeners are global — every mounted VoiceToTextInputField
+  // receives every event. This ref gates handlers so only the field that called
+  // start() processes results and updates its state.
+  const isActiveRef = useRef(false);
+
   const speechSupported = Platform.OS !== "web";
 
   // ── Speech recognition events ─────────────────────────────────────────────
 
   useSpeechRecognitionEvent("start", () => {
+    if (!isActiveRef.current) return;
     setRecognizing(true);
     setStatusText("Listening...");
     setErrorText("");
   });
 
   useSpeechRecognitionEvent("end", () => {
+    if (!isActiveRef.current) return;
+    isActiveRef.current = false;
     setRecognizing(false);
     setStatusText("Stopped");
     setBaseText("");
   });
 
   useSpeechRecognitionEvent("result", (event) => {
+    if (!isActiveRef.current) return;
     const transcript = event.results?.[0]?.transcript ?? "";
     if (!transcript) return;
     onChange(joinText(baseText, transcript));
   });
 
   useSpeechRecognitionEvent("error", (event) => {
+    if (!isActiveRef.current) return;
+    isActiveRef.current = false;
     setRecognizing(false);
     setStatusText("Error");
     setErrorText(`${event.error}: ${event.message ?? "Unknown error"}`);
@@ -95,6 +107,7 @@ export const VoiceToTextInputField = ({
 
       setBaseText(value ?? "");
       setStatusText("Starting...");
+      isActiveRef.current = true;
       ExpoSpeechRecognitionModule.start({
         lang: language,
         interimResults: true,
