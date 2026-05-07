@@ -1,15 +1,19 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { ReportTemplateRow, sqliteHelper } from "@/utils/sqliteHelper";
 import { router, useFocusEffect } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
   Pressable,
-  StyleSheet,
   Text,
   View,
 } from "react-native";
+import mobileAds, {
+  BannerAd,
+  BannerAdSize,
+  TestIds,
+} from "react-native-google-mobile-ads";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function HomeScreen() {
@@ -24,6 +28,13 @@ export default function HomeScreen() {
       fetchTemplates();
     }, [user]),
   );
+
+  // google mobile ads initialization
+  useEffect(() => {
+    mobileAds()
+      .initialize()
+      .catch((e) => console.warn("[mobileAds] init failed", e));
+  }, []);
 
   // Function to fetch templates from the local SQLite database
   const fetchTemplates = async () => {
@@ -58,6 +69,24 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background">
+      {/* Native AdMob banner (test) */}
+      <View
+        style={{
+          marginHorizontal: 0,
+          paddingHorizontal: 0,
+          marginBottom: 8,
+          alignItems: "center",
+          marginTop: -16,
+        }}
+      >
+        <BannerAd
+          unitId={TestIds.BANNER}
+          size={BannerAdSize.INLINE_ADAPTIVE_BANNER}
+          requestOptions={{ requestNonPersonalizedAdsOnly: true }}
+          onAdFailedToLoad={(e) => console.warn("[AdMob] Banner failed", e)}
+        />
+      </View>
+
       {/* accessibilityRole="header" tells the screen reader this is a page
           heading — VoiceOver/TalkBack announces it with heading intonation
           and users can jump to headings by swiping with the rotor */}
@@ -98,9 +127,7 @@ export default function HomeScreen() {
           keyExtractor={(item) => item.reportTemplateId?.toString() ?? ""}
           contentContainerClassName="px-4 pb-8"
           accessible={false}
-          ItemSeparatorComponent={() => (
-            <View className="h-px bg-border" />
-          )}
+          ItemSeparatorComponent={() => <View className="h-px bg-border" />}
           renderItem={({ item }) => (
             // accessibilityRole="button" — announced as interactive
             // accessibilityLabel — reads template name and version as one phrase
