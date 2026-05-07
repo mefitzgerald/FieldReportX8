@@ -12,7 +12,6 @@ import {
   ScrollView,
   Switch,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -32,17 +31,20 @@ export default function SettingsScreen() {
 
   // Whether the draft reminder is switched on
   const [reminderEnabled, setReminderEnabled] = useState(false);
-  // Hours as a string so the TextInput can hold partial/invalid input while typing
-  const [reminderHours, setReminderHours] = useState("24");
-  // Validation message shown below the hours input
-  const [hoursError, setHoursError] = useState<string | null>(null);
+  // Selected reminder duration in hours — one of the preset pill values
+  const [reminderHours, setReminderHours] = useState(24);
+
+  // Preset duration options (in hours) shown as selectable pills.
+  // These cover the most common reminder intervals — 1h for urgent,
+  // up to 48h for reports that can wait until the next day.
+  const REMINDER_OPTIONS = [1, 2, 4, 8, 24, 48];
 
   // Load saved reminder preferences from AsyncStorage when the screen mounts
   useEffect(() => {
     storageHelper.reminder.load().then((prefs) => {
       if (prefs) {
         setReminderEnabled(prefs.enabled);
-        setReminderHours(String(prefs.hours));
+        setReminderHours(prefs.hours);
       }
     });
   }, []);
@@ -53,30 +55,22 @@ export default function SettingsScreen() {
   // locally scheduled notifications — it does not touch FCM push notifications.
   const handleToggleReminder = async (value: boolean) => {
     setReminderEnabled(value);
-    const hours = parseInt(reminderHours, 10);
-    await storageHelper.reminder.save({ enabled: value, hours: isNaN(hours) ? 24 : hours });
+    await storageHelper.reminder.save({ enabled: value, hours: reminderHours });
     if (!value) {
       await Notifications.cancelAllScheduledNotificationsAsync();
       console.log("[Notifications] Draft reminders turned OFF — all pending reminders cancelled");
     } else {
-      console.log(`[Notifications] Draft reminders turned ON — reminder set for ${isNaN(hours) ? 24 : hours}h after save`);
+      console.log(`[Notifications] Draft reminders turned ON — reminder set for ${reminderHours}h after save`);
     }
   };
 
-  // Called when the hours input loses focus — validates then saves
-  const handleHoursBlur = async () => {
-    const parsed = parseInt(reminderHours, 10);
-
-    if (isNaN(parsed) || parsed < 1 || parsed > 72) {
-      setHoursError("Please enter a whole number between 1 and 72");
-      return;
-    }
-
-    // Clear any previous error and persist the valid value
-    setHoursError(null);
-    setReminderHours(String(parsed)); // normalise (strips decimals etc.)
-    await storageHelper.reminder.save({ enabled: reminderEnabled, hours: parsed });
-    console.log(`[Notifications] Reminder duration updated — ${parsed}h after save`);
+  // Called when the user taps a duration pill.
+  // Saves immediately — no validation needed since the options are fixed values.
+  // The reminder toggle state is preserved; only the duration changes.
+  const handleSelectHours = async (hours: number) => {
+    setReminderHours(hours);
+    await storageHelper.reminder.save({ enabled: reminderEnabled, hours });
+    console.log(`[Notifications] Reminder duration updated — ${hours}h after save`);
   };
 
   // ── Handlers ─────────────────────────────────────────────────────────────
@@ -170,34 +164,36 @@ export default function SettingsScreen() {
             />
           </View>
 
-          {/* Hours input — only shown when reminders are enabled */}
+          {/* Duration pills — only shown when reminders are enabled.
+              The currently selected duration is highlighted in primary colour.
+              Tapping a pill calls handleSelectHours which saves to AsyncStorage
+              immediately so the preference survives app restarts. */}
           {reminderEnabled && (
-            <View className="gap-1">
+            <View className="gap-2">
               <Text className="text-sm text-textSecondary">
                 Remind me after how many hours?
               </Text>
-              <TextInput
-                className={`border rounded-xl px-4 py-3 text-base text-text bg-background ${
-                  hoursError ? "border-danger" : "border-border"
-                }`}
-                value={reminderHours}
-                onChangeText={(text) => {
-                  setReminderHours(text);
-                  setHoursError(null); // clear error while the user is typing
-                }}
-                onBlur={handleHoursBlur}   // validate and save when focus leaves
-                keyboardType="numeric"
-                maxLength={2}              // 1–72 is at most 2 digits
-                placeholder="24"
-                placeholderTextColor="#888"
-              />
-              {/* Validation error */}
-              {hoursError && (
-                <Text className="text-danger text-xs">{hoursError}</Text>
-              )}
-              <Text className="text-xs text-textSecondary">
-                Enter a number between 1 and 72
-              </Text>
+              <View className="flex-row flex-wrap gap-2">
+                {REMINDER_OPTIONS.map((hours) => (
+                  <Pressable
+                    key={hours}
+                    className={`border rounded-full py-1.5 px-4 ${
+                      reminderHours === hours
+                        ? "bg-primary border-primary"  // active — filled
+                        : "border-border"              // inactive — outline only
+                    }`}
+                    onPress={() => handleSelectHours(hours)}
+                  >
+                    <Text
+                      className={`text-sm font-medium ${
+                        reminderHours === hours ? "text-white" : "text-text"
+                      }`}
+                    >
+                      {hours}h
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
             </View>
           )}
         </View>
