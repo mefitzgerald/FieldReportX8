@@ -58,29 +58,63 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background">
-      <Text className="text-2xl font-bold text-text text-center my-4">
+      {/* accessibilityRole="header" tells the screen reader this is a page
+          heading — VoiceOver/TalkBack announces it with heading intonation
+          and users can jump to headings by swiping with the rotor */}
+      <Text
+        className="text-2xl font-bold text-text text-center my-4"
+        accessibilityRole="header"
+      >
         Select a Template
       </Text>
-      {/* Show loading indicator while fetching templates */}
-      {loading && <ActivityIndicator className="mt-8"/>}
-      {!loading && templates.length === 0 && (
-        <Text className="text-textSecondary italic text-center m-4">No templates found.</Text>
+
+      {/* accessibilityLabel gives the spinner a spoken label instead of silence.
+          accessibilityRole="progressbar" tells the reader it's a loading state */}
+      {loading && (
+        <ActivityIndicator
+          className="mt-8"
+          accessibilityLabel="Loading templates"
+          accessibilityRole="progressbar"
+        />
       )}
-      {/* Show the list of templates once loaded */}
+
+      {/* Plain text — accessibilityLabel avoids the trailing period being
+          read as a pause or full stop on some screen readers */}
+      {!loading && templates.length === 0 && (
+        <Text
+          className="text-textSecondary italic text-center m-4"
+          accessibilityLabel="No templates found"
+        >
+          No templates found.
+        </Text>
+      )}
+
+      {/* accessible={false} on the FlatList prevents it being treated as a
+          single focusable element — the screen reader steps through each
+          Pressable item individually instead */}
       {!loading && templates.length > 0 && (
         <FlatList
           data={templates}
           keyExtractor={(item) => item.reportTemplateId?.toString() ?? ""}
           contentContainerClassName="px-4 pb-8"
+          accessible={false}
           ItemSeparatorComponent={() => (
             <View className="h-px bg-border" />
           )}
           renderItem={({ item }) => (
+            // accessibilityRole="button" — announced as interactive
+            // accessibilityLabel — reads template name and version as one phrase
+            // accessibilityHint — tells the user what a tap will do
             <Pressable
               className="flex-row items-center justify-between py-4 active:opacity-50"
               onPress={() => handleSelectTemplate(item)}
+              accessibilityRole="button"
+              accessibilityLabel={`${item.reportTemplateName ?? "Unnamed Template"}, version ${item.reportTemplateVersion ?? 1}`}
+              accessibilityHint="Double tap to start a new report"
             >
-              {/* Display the template name and version */}
+              {/* These Text nodes are grouped under the Pressable so the screen
+                  reader reads them as part of the button label above, not
+                  separately — no extra accessibility props needed here */}
               <Text className="text-base text-text flex-1 mr-3">
                 {item.reportTemplateName ?? "Unnamed Template"}
               </Text>
