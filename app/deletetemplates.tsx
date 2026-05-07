@@ -68,6 +68,16 @@ export default function DeleteTemplateScreen() {
       return;
     }
 
+    // Block deletion of the built-in default template
+    if (template.reportTemplateName === "Default Field Report") {
+      Alert.alert(
+        "Cannot Delete",
+        "The Default Field Report template cannot be deleted.",
+        [{ text: "OK" }]
+      );
+      return;
+    }
+
     // Confirm before deleting — this also cascades to Report_Field_Templates
     // via the SQLite foreign key ON DELETE CASCADE
     Alert.alert(
