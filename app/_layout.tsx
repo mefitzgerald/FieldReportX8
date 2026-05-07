@@ -1,5 +1,5 @@
-import "../global.css";
 import { LogBox } from "react-native";
+import "../global.css";
 
 // Suppress false-positive Reanimated warning triggered by Skia/Gesture Handler internals.
 // LogBox suppresses the in-app overlay; the console.warn filter suppresses Metro output.
@@ -10,17 +10,20 @@ console.warn = (...args) => {
   _warn(...args);
 };
 
-import { useColorScheme } from "@/components/useColorScheme";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
-import { THEME_COLOURS, ThemeProvider, useTheme } from "@/contexts/ThemeContext";
+import {
+  THEME_COLOURS,
+  ThemeProvider,
+  useTheme,
+} from "@/contexts/ThemeContext";
 import { sqliteHelper } from "@/utils/sqliteHelper";
-import * as NavigationBar from "expo-navigation-bar";
 import {
   DarkTheme,
   DefaultTheme,
   ThemeProvider as NavThemeProvider,
 } from "@react-navigation/native";
 import { useFonts } from "expo-font";
+import * as NavigationBar from "expo-navigation-bar";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
@@ -124,10 +127,17 @@ function RootLayoutNav() {
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="modal" options={{ presentation: "modal" }} />
             <Stack.Screen name="dbviewer" options={{ headerShown: false }} />
-            <Stack.Screen name="addtemplates" options={{ headerShown: false }} />
+            <Stack.Screen
+              name="addtemplates"
+              options={{ headerShown: false }}
+            />
             <Stack.Screen name="report" options={{ headerShown: false }} />
             <Stack.Screen name="profile" options={{ headerShown: false }} />
-            <Stack.Screen name="businessprofile" options={{ headerShown: false }} />
+            <Stack.Screen
+              name="businessprofile"
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen name="compare" options={{ headerShown: false }} />
             <Stack.Screen
               name="deletetemplates"
               options={{ headerShown: false }}
@@ -138,4 +148,3 @@ function RootLayoutNav() {
     </>
   );
 }
-
