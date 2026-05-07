@@ -1,6 +1,7 @@
 import { scheduleDraftReminder } from "@/utils/notificationHelper";
 import { storageHelper } from "@/utils/storageHelper";
 import { CameraInputField } from "@/components/inputs/CameraInputField";
+import { TiltAngleInputField, TiltReading } from "@/components/inputs/TiltAngleInputField";
 import { DateTimeInputField } from "@/components/inputs/DateTimeInputField";
 import { GpsInputField } from "@/components/inputs/GpsInputField";
 import { GpsMapInputField } from "@/components/inputs/GpsMapInputField";
@@ -361,6 +362,22 @@ export default function ReportScreen() {
               sensorDataTimestamp: timestamp,
             });
           }
+
+          // Tilt angle — save pitch/roll to Report_Sensor_Data alongside the
+          // JSON already written to Report_Field.fieldData. Uses the capturedAt
+          // from the reading as the sensor timestamp rather than the submit time.
+          if (
+            field.fieldTemplateType === "tilt_angle" &&
+            typeof rawValue === "object" &&
+            rawValue !== null
+          ) {
+            await sqliteHelper.reportSensorData.save({
+              fieldId: savedFieldId,
+              sensorDataType: "accelerometer",
+              sensorDataResults: JSON.stringify(rawValue),
+              sensorDataTimestamp: (rawValue as any).capturedAt ?? timestamp,
+            });
+          }
         }
         console.log("[ReportScreen] New report saved with ID:", newReportId);
 
@@ -600,6 +617,15 @@ export default function ReportScreen() {
                   <SignatureInputField
                     onChange={onChange}
                     value={(value as string) ?? ""}
+                  />
+                );
+              // Spirit-level style tilt measurement using the accelerometer.
+              // Saves pitch and roll angles as a JSON object: { pitch, roll, capturedAt }
+              case "tilt_angle":
+                return (
+                  <TiltAngleInputField
+                    onChange={onChange}
+                    value={(value as TiltReading) ?? null}
                   />
                 );
               default:
