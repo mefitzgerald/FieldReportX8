@@ -26,14 +26,33 @@ export default function TabLayout() {
     });
 
     // Show badge when a new-template notification arrives while app is open
-    const sub = Notifications.addNotificationReceivedListener((notification) => {
+    const receivedSub = Notifications.addNotificationReceivedListener((notification) => {
       if (notification.request.content.data?.screen === "addtemplates") {
         setHasNewTemplate(true);
         AsyncStorage.setItem(BADGE_KEY, "true");
       }
     });
 
-    return () => sub.remove();
+    // Navigate when the user taps a notification while the app is in the background.
+    // addNotificationResponseReceivedListener fires on any user interaction with
+    // a notification (tap, or action button) — not just when it arrives.
+    const responseSub = Notifications.addNotificationResponseReceivedListener((response) => {
+      const screen = response.notification.request.content.data?.screen;
+      if (screen === "history") router.push("/(tabs)/history");
+    });
+
+    // Handle cold-start: if the app was completely closed and the user tapped a
+    // notification to open it, getLastNotificationResponseAsync returns that
+    // response so we can navigate immediately on mount.
+    Notifications.getLastNotificationResponseAsync().then((response) => {
+      const screen = response?.notification.request.content.data?.screen;
+      if (screen === "history") router.push("/(tabs)/history");
+    });
+
+    return () => {
+      receivedSub.remove();
+      responseSub.remove();
+    };
   }, []);
 
   const handleTemplateBadgePress = () => {
