@@ -52,6 +52,27 @@ export const storageHelper = {
   },
 
   /**
+   * Draft reminder preference helpers.
+   *
+   * Stored in AsyncStorage as JSON: { enabled: boolean, hours: number }
+   * AsyncStorage on Android is backed by SQLite — it persists across app
+   * restarts and survives in the background, but is cleared on uninstall.
+   */
+  reminder: {
+    save: async (prefs: { enabled: boolean; hours: number }): Promise<void> => {
+      await storageHelper.setItem("reminder_prefs", prefs);
+    },
+
+    load: async (): Promise<{ enabled: boolean; hours: number } | null> => {
+      return await storageHelper.getItem("reminder_prefs");
+    },
+
+    clear: async (): Promise<void> => {
+      await storageHelper.removeItem("reminder_prefs");
+    },
+  },
+
+  /**
    * User-specific helper functions
    */
   user: {

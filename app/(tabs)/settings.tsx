@@ -1,13 +1,18 @@
 import { ThemeSelector } from "@/components/ThemeSelector";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
+import { storageHelper } from "@/utils/storageHelper";
+import * as Notifications from "expo-notifications";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { useEffect, useState } from "react";
 import {
   Alert,
   Pressable,
   ScrollView,
+  Switch,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -22,6 +27,57 @@ export default function SettingsScreen() {
   // Android doesn't automatically switch the status bar text colour based on the background color like iOS does,
   // so we need to set it manually here. Also somtimes expo go just ignores this as its a butthead. When I switch to dev build it should be fine.
   const { theme } = useTheme();
+
+  // ── Reminder state ────────────────────────────────────────────────────────
+
+  // Whether the draft reminder is switched on
+  const [reminderEnabled, setReminderEnabled] = useState(false);
+  // Hours as a string so the TextInput can hold partial/invalid input while typing
+  const [reminderHours, setReminderHours] = useState("24");
+  // Validation message shown below the hours input
+  const [hoursError, setHoursError] = useState<string | null>(null);
+
+  // Load saved reminder preferences from AsyncStorage when the screen mounts
+  useEffect(() => {
+    storageHelper.reminder.load().then((prefs) => {
+      if (prefs) {
+        setReminderEnabled(prefs.enabled);
+        setReminderHours(String(prefs.hours));
+      }
+    });
+  }, []);
+
+  // Called when the toggle is flipped — saves immediately.
+  // Toggling off also cancels any pending draft reminders that were already
+  // scheduled with the OS. cancelAllScheduledNotificationsAsync only affects
+  // locally scheduled notifications — it does not touch FCM push notifications.
+  const handleToggleReminder = async (value: boolean) => {
+    setReminderEnabled(value);
+    const hours = parseInt(reminderHours, 10);
+    await storageHelper.reminder.save({ enabled: value, hours: isNaN(hours) ? 24 : hours });
+    if (!value) {
+      await Notifications.cancelAllScheduledNotificationsAsync();
+      console.log("[Notifications] Draft reminders turned OFF — all pending reminders cancelled");
+    } else {
+      console.log(`[Notifications] Draft reminders turned ON — reminder set for ${isNaN(hours) ? 24 : hours}h after save`);
+    }
+  };
+
+  // Called when the hours input loses focus — validates then saves
+  const handleHoursBlur = async () => {
+    const parsed = parseInt(reminderHours, 10);
+
+    if (isNaN(parsed) || parsed < 1 || parsed > 72) {
+      setHoursError("Please enter a whole number between 1 and 72");
+      return;
+    }
+
+    // Clear any previous error and persist the valid value
+    setHoursError(null);
+    setReminderHours(String(parsed)); // normalise (strips decimals etc.)
+    await storageHelper.reminder.save({ enabled: reminderEnabled, hours: parsed });
+    console.log(`[Notifications] Reminder duration updated — ${parsed}h after save`);
+  };
 
   // ── Handlers ─────────────────────────────────────────────────────────────
 
@@ -94,6 +150,56 @@ export default function SettingsScreen() {
             Appearance
           </Text>
           <ThemeSelector firebaseUid={user?.uid} />
+        </View>
+
+        {/* ── Reminders ───────────────────────────────────────────────────── */}
+        {/* When enabled, a local notification is scheduled via WorkManager each
+            time the user saves a new draft report. The notification fires after
+            the chosen number of hours to remind them to complete it. */}
+        <View className="bg-surface rounded-2xl p-4 gap-4">
+          <Text className="text-sm font-semibold text-textSecondary uppercase tracking-widest">
+            Draft Reminders
+          </Text>
+
+          {/* Toggle row */}
+          <View className="flex-row items-center justify-between">
+            <Text className="text-base text-text">Remind me about draft reports</Text>
+            <Switch
+              value={reminderEnabled}
+              onValueChange={handleToggleReminder}
+            />
+          </View>
+
+          {/* Hours input — only shown when reminders are enabled */}
+          {reminderEnabled && (
+            <View className="gap-1">
+              <Text className="text-sm text-textSecondary">
+                Remind me after how many hours?
+              </Text>
+              <TextInput
+                className={`border rounded-xl px-4 py-3 text-base text-text bg-background ${
+                  hoursError ? "border-danger" : "border-border"
+                }`}
+                value={reminderHours}
+                onChangeText={(text) => {
+                  setReminderHours(text);
+                  setHoursError(null); // clear error while the user is typing
+                }}
+                onBlur={handleHoursBlur}   // validate and save when focus leaves
+                keyboardType="numeric"
+                maxLength={2}              // 1–72 is at most 2 digits
+                placeholder="24"
+                placeholderTextColor="#888"
+              />
+              {/* Validation error */}
+              {hoursError && (
+                <Text className="text-danger text-xs">{hoursError}</Text>
+              )}
+              <Text className="text-xs text-textSecondary">
+                Enter a number between 1 and 72
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* ── Templates ───────────────────────────────────────────────────── */}

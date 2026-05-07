@@ -1,3 +1,5 @@
+import { scheduleDraftReminder } from "@/utils/notificationHelper";
+import { storageHelper } from "@/utils/storageHelper";
 import { CameraInputField } from "@/components/inputs/CameraInputField";
 import { DateTimeInputField } from "@/components/inputs/DateTimeInputField";
 import { GpsInputField } from "@/components/inputs/GpsInputField";
@@ -351,6 +353,17 @@ export default function ReportScreen() {
           }
         }
         console.log("[ReportScreen] New report saved with ID:", newReportId);
+
+        // Schedule a draft reminder if the user has enabled them in Settings
+        // and the report isn't already in a finished state. We only do this
+        // for new reports — editing an existing report doesn't add another reminder,
+        // so reminders can't stack up if the user saves the same report multiple times.
+        if (reportStatus !== "completed" && reportStatus !== "archived") {
+          const reminderPrefs = await storageHelper.reminder.load();
+          if (reminderPrefs?.enabled && reminderPrefs?.hours) {
+            await scheduleDraftReminder(reminderPrefs.hours);
+          }
+        }
       }
 
       Alert.alert(
