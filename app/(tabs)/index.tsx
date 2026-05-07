@@ -81,7 +81,7 @@ export default function HomeScreen() {
       >
         <BannerAd
           unitId={TestIds.BANNER}
-          size={BannerAdSize.INLINE_ADAPTIVE_BANNER}
+          size={BannerAdSize.LARGE_BANNER}
           requestOptions={{ requestNonPersonalizedAdsOnly: true }}
           onAdFailedToLoad={(e) => console.warn("[AdMob] Banner failed", e)}
         />
