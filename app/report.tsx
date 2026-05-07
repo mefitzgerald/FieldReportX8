@@ -191,15 +191,25 @@ export default function ReportScreen() {
       setFields(mappedFields);
 
       // Pre-fill form values from saved fieldData.
-      // Try JSON parse first (sensor data), fall back to raw string (text/camera).
+      // Plain string types bypass JSON.parse entirely — a numeric Property ID
+      // like "12345" would otherwise parse to the number 12345, which React
+      // Native's TextInput won't display. Structured types (sensor, GPS) still
+      // need JSON.parse to restore their object values.
       const defaultValues: FormValues = {};
+      const plainStringTypes = new Set([
+        "text", "voice_text", "voice", "speech", "speech_to_text",
+      ]);
       for (const f of savedFields) {
         const fieldKey = `field_${f.fieldId}`;
         if (f.fieldData) {
-          try {
-            defaultValues[fieldKey] = JSON.parse(f.fieldData);
-          } catch {
+          if (plainStringTypes.has(f.fieldType ?? "")) {
             defaultValues[fieldKey] = f.fieldData;
+          } else {
+            try {
+              defaultValues[fieldKey] = JSON.parse(f.fieldData);
+            } catch {
+              defaultValues[fieldKey] = f.fieldData;
+            }
           }
         }
       }
