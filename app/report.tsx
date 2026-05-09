@@ -7,6 +7,7 @@ import { GpsInputField } from "@/components/inputs/GpsInputField";
 import { GpsMapInputField } from "@/components/inputs/GpsMapInputField";
 import { RatingInputField } from "@/components/inputs/RatingInputField";
 import { SensorInputField } from "@/components/inputs/SensorInputField";
+import { PoseInputField } from "@/components/inputs/PoseInputField";
 import { SignatureInputField } from "@/components/inputs/SignatureInputField";
 import { VoiceToTextInputField } from "@/components/inputs/VoiceToTextInputField";
 import { ScreenHeader } from "@/components/ScreenHeader";
@@ -327,7 +328,8 @@ export default function ReportScreen() {
           if (
             (field.fieldTemplateType === "camera" ||
               field.fieldTemplateType === "sign" ||
-              field.fieldTemplateType === "gps_map") &&
+              field.fieldTemplateType === "gps_map" ||
+              field.fieldTemplateType === "pose_detect") &&
             typeof rawValue === "string" &&
             rawValue
           ) {
@@ -609,6 +611,13 @@ export default function ReportScreen() {
                   <RatingInputField
                     onChange={onChange}
                     value={(value as unknown as number) ?? null}
+                  />
+                );
+              case "pose_detect":
+                return (
+                  <PoseInputField
+                    onChange={onChange}
+                    value={(value as string) ?? ""}
                   />
                 );
               // Freehand signature pad — saves as image file, stores URI
