@@ -14,6 +14,7 @@ import {
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { Canvas, Image as SkiaImage, Path, SkPath, Skia, useImage } from "@shopify/react-native-skia";
 import { formatGpsString, getCurrentLocation } from "@/utils/locationHelper";
+import { acquireCamera, releaseCamera } from "@/utils/cameraLock";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -79,6 +80,12 @@ export const CameraInputField = ({
   const cameraRef = useRef<CameraView>(null);
   const annotationRef = useRef<{ confirm: () => void; clear: () => void } | null>(null);
 
+  // Release the camera lock if the component unmounts while the camera is open
+  // (e.g. the user presses the system back button).
+  useEffect(() => {
+    return () => releaseCamera();
+  }, []);
+
   // Notify parent when annotation phase starts or ends so it can
   // lock/unlock ScrollView scrolling — prevents scroll intercepting draw gestures.
   useEffect(() => {
@@ -127,7 +134,8 @@ export const CameraInputField = ({
         return;
       }
 
-      // Photo is in hand — now safe to unmount CameraView
+      // Photo is in hand — now safe to unmount CameraView and release the lock
+      releaseCamera();
       setPhase("saving");
 
       // Save to device media library, then resolve a stable file:// URI.
@@ -182,7 +190,7 @@ export const CameraInputField = ({
             onPress={takePicture}
             disabled={!cameraReady}
           />
-          <TouchableOpacity onPress={() => { setCameraReady(false); setPhase("idle"); }}>
+          <TouchableOpacity onPress={() => { releaseCamera(); setCameraReady(false); setPhase("idle"); }}>
             <Text className="text-white font-bold text-base">Cancel</Text>
           </TouchableOpacity>
         </View>
@@ -303,7 +311,13 @@ export const CameraInputField = ({
 
       <TouchableOpacity
         className="bg-primary py-3 rounded-xl w-full items-center mb-2"
-        onPress={() => setPhase("camera")}
+        onPress={() => {
+          if (!acquireCamera()) {
+            Alert.alert("Camera in use", "Please close the other camera field first.");
+            return;
+          }
+          setPhase("camera");
+        }}
       >
         <Text className="text-white font-bold">
           {value ? "Retake Photo" : "Open Camera"}
