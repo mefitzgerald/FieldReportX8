@@ -1,3 +1,4 @@
+import { acquireCamera, releaseCamera } from "@/utils/cameraLock";
 import type { PoseLandmark } from "@mefitzgerald/expo-pose-detection";
 import {
   getPoseAngles,
@@ -6,7 +7,7 @@ import {
 } from "@mefitzgerald/expo-pose-detection";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { File, Paths } from "expo-file-system";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -106,6 +107,12 @@ export const PoseInputField = ({ onChange, value }: PoseInputFieldProps) => {
   // photo + SVG overlay into a single flat JPEG stored in the temp directory.
   const viewShotRef = useRef<ViewShot>(null);
 
+  // Release the camera lock if the component unmounts while the camera is open
+  // (e.g. the user presses the system back button).
+  useEffect(() => {
+    return () => releaseCamera();
+  }, []);
+
   // ── Permissions ───────────────────────────────────────────────────────────
 
   // Permission status is null while the OS is still resolving it — show a
@@ -160,6 +167,7 @@ export const PoseInputField = ({ onChange, value }: PoseInputFieldProps) => {
       const width = photo.width ?? 1;
       const height = photo.height ?? 1;
 
+      releaseCamera();
       // Switch to the detecting phase before the async ML Kit call so the
       // spinner appears immediately rather than after an invisible delay.
       setPhase("detecting");
@@ -281,6 +289,7 @@ export const PoseInputField = ({ onChange, value }: PoseInputFieldProps) => {
             onPress={() => {
               // Reset cameraReady so if the camera is reopened it waits for
               // onCameraReady again rather than using a stale true value.
+              releaseCamera();
               setCameraReady(false);
               setPhase("idle");
             }}
@@ -463,7 +472,13 @@ export const PoseInputField = ({ onChange, value }: PoseInputFieldProps) => {
 
       <TouchableOpacity
         className="bg-primary py-3 rounded-xl w-full items-center"
-        onPress={() => setPhase("camera")}
+        onPress={() => {
+          if (!acquireCamera()) {
+            Alert.alert("Camera in use", "Please close the other camera field first.");
+            return;
+          }
+          setPhase("camera");
+        }}
       >
         <Text className="text-white font-bold">
           {value ? "Retake Pose" : "Capture Pose"}
