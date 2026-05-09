@@ -74,12 +74,19 @@ const buildReportHtml = async (data: PdfReportData): Promise<string> => {
     let valueHtml = "<em>No data</em>";
 
     if (field.fieldData) {
-      if (type === "camera" || type === "sign" || type === "gps_map") {
+      if (type === "camera" || type === "sign" || type === "gps_map" || type === "pose_detect") {
         // Convert image URI to base64 for inline embedding.
         // camera = annotated photo, sign = signature PNG, gps_map = map snapshot PNG.
+        const imageMaxHeight: Record<string, string> = {
+          sign: "120px",
+          camera: "300px",
+          gps_map: "250px",
+          pose_detect: "480px",
+        };
+        const maxHeight = imageMaxHeight[type] ?? "300px";
         const base64Image = await imageUriToBase64(field.fieldData);
         if (base64Image) {
-          valueHtml = `<img src="${base64Image}" style="max-width: 100%; max-height: 300px; border-radius: 6px; object-fit: contain;" />`;
+          valueHtml = `<img src="${base64Image}" style="max-width: 100%; max-height: ${maxHeight}; border-radius: 6px; object-fit: contain;" />`;
         } else {
           valueHtml = "<em>Image unavailable</em>";
         }
@@ -273,7 +280,7 @@ export const shareReportPdf = async (
   const html = await buildReportHtml(data);
   const isLandscape = data.report.reportLayout?.toLowerCase() === "landscape";
 
-  // Generate the PDF file
+  // TODO: pass orientation to printToFileAsync (isLandscape is computed above but not yet used here)
   const { uri } = await Print.printToFileAsync({
     html,
     base64: false,
