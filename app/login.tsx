@@ -1,4 +1,5 @@
 import { useAuth } from "@/contexts/AuthContext";
+import { sanitizeText } from "@/utils/sanitize";
 import { FirebaseError } from "firebase/app";
 import { sendPasswordResetEmail } from "firebase/auth";
 import { auth } from "@/firebaseConfig"; 
@@ -71,7 +72,7 @@ export default function LoginScreen() {
     setIsLoading(true);
     try {
       console.log("[Login] Attempting login for:", email.trim());
-      await login(email.trim(), password);
+      await login(sanitizeText(email.trim()), password);
       console.log("[Login] Login successful");
     } catch (error) {
       console.warn("[Login] Login failed:", error);
@@ -99,7 +100,7 @@ export default function LoginScreen() {
     setIsLoading(true);
     try {
       console.log("[Login] Attempting registration for:", email.trim());
-      await register(email.trim(), password, displayName.trim());
+      await register(sanitizeText(email.trim()), password, sanitizeText(displayName.trim()));
       console.log("[Login] Registration successful");
     } catch (error) {
       console.warn("[Login] Registration failed:", error);
@@ -124,7 +125,7 @@ export default function LoginScreen() {
 
     try {
       console.log("[Login] Sending password reset email to:", email.trim());
-      await sendPasswordResetEmail(auth, email.trim());
+      await sendPasswordResetEmail(auth, sanitizeText(email.trim()));
       Alert.alert(
         "Email Sent",
         `A password reset link has been sent to ${email.trim()}.`

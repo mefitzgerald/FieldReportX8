@@ -1,3 +1,5 @@
+// Placeholder screen — not currently linked to from anywhere in the app.
+// Reserved for a future in-app PDF viewer if needed.
 import { StyleSheet, Text, View } from "react-native";
 
 export default function PdfScreen() {

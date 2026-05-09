@@ -1,11 +1,19 @@
+// Used in the Settings screen to let the user pick between available themes.
+// Uses StyleSheet rather than NativeWind because the active colours come from
+// ThemeContext at runtime — NativeWind classNames are resolved at build time
+// and can't reference dynamic colour values.
 import { THEME_OPTIONS, ThemeName, useTheme } from "@/contexts/ThemeContext";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 interface ThemeSelectorProps {
-  /** Firebase UID — passed to setTheme so it can persist the choice to the User table */
+  // Firebase UID — passed to setTheme so it can persist the chosen theme
+  // to the User table in SQLite alongside the Firebase record.
   firebaseUid?: string;
 }
 
+// Renders a row of pill buttons, one per available theme.
+// The active theme's pill is highlighted with the tint colour.
+// Tapping a pill calls setTheme which updates the context and persists the choice.
 export function ThemeSelector({ firebaseUid }: ThemeSelectorProps) {
   const { theme, setTheme, colours } = useTheme();
 
@@ -19,6 +27,7 @@ export function ThemeSelector({ firebaseUid }: ThemeSelectorProps) {
             style={[
               styles.option,
               { borderColor: colours.border },
+              // Highlight the currently active theme pill
               theme === option.value && { backgroundColor: colours.tint, borderColor: colours.tint },
             ]}
             onPress={() => setTheme(option.value as ThemeName, firebaseUid)}
@@ -27,6 +36,7 @@ export function ThemeSelector({ firebaseUid }: ThemeSelectorProps) {
               style={[
                 styles.optionText,
                 { color: colours.text },
+                // White bold text on the active pill for contrast
                 theme === option.value && { color: "#fff", fontWeight: "600" },
               ]}
             >
