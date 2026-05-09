@@ -1,7 +1,5 @@
-/**
- * Learn more about Light and Dark modes:
- * https://docs.expo.io/guides/color-schemes/
- */
+// Only used by app/+not-found.tsx (the 404 screen for unmatched deep links).
+// TODO: Convert +not-found.tsx to use NativeWind classNames and delete this file.
 
 import { Text as DefaultText, View as DefaultView } from 'react-native';
 import { ColorSchemeName } from 'react-native';
