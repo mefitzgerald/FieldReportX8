@@ -125,7 +125,7 @@ function RootLayoutNav() {
           </Stack.Protected>
           <Stack.Protected guard={isLoggedIn}>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="modal" options={{ presentation: "modal" }} />
+            <Stack.Screen name="modal" options={{ presentation: "modal", title: "About" }} />
             <Stack.Screen name="dbviewer" options={{ headerShown: false }} />
             <Stack.Screen
               name="addtemplates"

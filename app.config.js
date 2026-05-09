@@ -26,7 +26,7 @@ export default {
       },
     },
     android: {
-      googleServicesFile: "./google-services.json",
+      googleServicesFile: process.env.GOOGLE_SERVICES_JSON || "./google-services.json",
       package: "com.fieldreportx.app",
       adaptiveIcon: {
         foregroundImage: "./assets/images/reportXlogo.png",
