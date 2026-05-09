@@ -759,7 +759,9 @@ export default function ReportScreen() {
           className={`rounded-xl py-4 items-center mt-2 bg-primary ${
             submitting || exporting ? "opacity-60" : "active:opacity-80"
           }`}
-          onPress={handleSubmit(onSubmit)}
+          onPress={handleSubmit(onSubmit, () =>
+            Alert.alert("Required fields", "Please complete all required fields before submitting.")
+          )}
           disabled={submitting || exporting}
         >
           <Text className="text-white font-bold text-base">
