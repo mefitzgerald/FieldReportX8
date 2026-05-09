@@ -74,6 +74,10 @@ export default function ModalScreen() {
             heading="Gyroscope Sensor"
             body="Records live motion data from the device gyroscope. Useful for logging vibration or tilt readings."
           />
+          <HelpItem
+            heading="Pose Capture"
+            body="Opens the camera and detects the subject's body pose using on-device ML. The captured photo is overlaid with a skeleton and joint angle labels, then saved as a single image."
+          />
         </HelpSection>
 
         {/* ── Managing Reports ────────────────────────────────────────────── */}
@@ -85,6 +89,10 @@ export default function ModalScreen() {
           <HelpItem
             heading="Exporting to PDF"
             body="Open a saved report, then tap Preview & Export PDF. You can preview the PDF or share it via email, Google Drive, WhatsApp, or any other app on your device."
+          />
+          <HelpItem
+            heading="Comparing reports"
+            body="In the Compare tab, enter a Property ID to see the two most recent reports for that property side by side. Each field is shown as a pair of columns so differences are immediately visible."
           />
           <HelpItem
             heading="Draft reminders"

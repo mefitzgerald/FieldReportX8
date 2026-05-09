@@ -19,19 +19,40 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+// ReportFieldRow extended with the first image URI for camera fields.
+// Non-camera fields have mediaUrl as null.
 type FieldWithMedia = ReportFieldRow & { mediaUrl?: string | null };
+
+// ─── Component ────────────────────────────────────────────────────────────────
+//
+// Lets the user enter a Property ID and side-by-side compare the two most
+// recent reports filed against that property. Each field is shown as a pair
+// of panes — one per report — so differences are immediately visible.
+//
+// Flow:
+//   1. User types a Property ID and taps Search
+//   2. SQL query finds up to 2 reports matching that ID for the current user
+//   3. Fields for both reports are loaded in parallel and displayed in order
 
 export default function CompareScreen() {
   const { user } = useAuth();
 
+  // The Property ID the user typed into the search box.
   const [propertyId, setPropertyId] = useState("");
+  // True while the initial report search query is running.
   const [searching, setSearching] = useState(false);
+  // Feedback message shown below the search bar (errors, "no results", etc.).
   const [message, setMessage] = useState<string | null>(null);
+  // The two reports being compared — always 0 or 2 entries once a search completes.
   const [reportsToCompare, setReportsToCompare] = useState<ReportRow[]>([]);
+  // Fields for the older (A) and newer (B) reports respectively.
   const [fieldsA, setFieldsA] = useState<FieldWithMedia[]>([]);
   const [fieldsB, setFieldsB] = useState<FieldWithMedia[]>([]);
+  // True while the field rows are being fetched after a successful search.
   const [loading, setLoading] = useState(false);
 
+  // Clear all results whenever the user edits the Property ID so stale data
+  // from a previous search is never shown alongside a new query.
   useEffect(() => {
     setMessage(null);
     setReportsToCompare([]);
@@ -39,6 +60,11 @@ export default function CompareScreen() {
     setFieldsB([]);
   }, [propertyId]);
 
+  // ── Search ────────────────────────────────────────────────────────────────
+
+  // Finds the two most recent reports for the entered Property ID.
+  // Uses a JOIN on Report_Field to match the "Property ID" field value —
+  // Property ID is stored as a regular field rather than a top-level column.
   const handleSearchByPropertyId = async () => {
     if (!user) {
       setMessage("You must be logged in to search reports.");
@@ -52,6 +78,7 @@ export default function CompareScreen() {
     setSearching(true);
     setMessage(null);
     try {
+      // Resolve Firebase UID → local SQLite userId
       const localUser = await sqliteHelper.user.getByFirebaseUid(user.uid);
       if (!localUser?.userId) {
         setMessage("Local user not found.");
@@ -61,6 +88,9 @@ export default function CompareScreen() {
 
       const db = await getDb();
 
+      // Fetch up to 2 reports for this property, newest first.
+      // The JOIN ensures we only match reports that actually have a
+      // "Property ID" field whose value equals the search input.
       const reports: ReportRow[] = await db.getAllAsync(
         `SELECT r.* FROM Report r
          JOIN Report_Field f ON f.reportId = r.reportId
@@ -77,6 +107,7 @@ export default function CompareScreen() {
         return;
       }
 
+      // Need at least 2 reports to show a side-by-side comparison.
       if (reports.length === 1) {
         setMessage(
           "Only one report found for that Property ID — comparison unavailable.",
@@ -87,6 +118,7 @@ export default function CompareScreen() {
       }
 
       setReportsToCompare(reports);
+      // Load fields for both reports in parallel before dismissing the keyboard.
       await loadFieldsForReports(reports[0].reportId!, reports[1].reportId!);
       Keyboard.dismiss();
     } catch (err: any) {
@@ -97,13 +129,19 @@ export default function CompareScreen() {
     }
   };
 
+  // ── Load fields ───────────────────────────────────────────────────────────
+
+  // Fetches all non-signature fields for both reports simultaneously.
+  // Camera fields are joined with Report_Media to pull in the first image URI.
+  // Both queries run in parallel via Promise.all for speed.
   const loadFieldsForReports = async (reportIdA: number, reportIdB: number) => {
     setLoading(true);
     try {
       const db = await getDb();
 
-      // LEFT JOIN pulls in the first image for camera fields; non-camera fields get null mediaUrl.
-      // Signatures are excluded via fieldType != 'sign'.
+      // LEFT JOIN pulls in the first image for camera fields; non-camera fields
+      // get null for mediaUrl. Signatures are excluded — they don't compare well
+      // as text and aren't useful in a side-by-side view.
       const fieldsFor = (reportId: number) =>
         db.getAllAsync<FieldWithMedia>(
           `SELECT f.*, m.mediaUrl
@@ -133,7 +171,13 @@ export default function CompareScreen() {
     }
   };
 
-  // Union of field labels from both reports, sorted by fieldOrderNumber
+  // ── Label alignment ───────────────────────────────────────────────────────
+
+  // Build a unified list of field labels from both reports so every label
+  // appears exactly once in the comparison table. Using a Set deduplicates
+  // labels that appear in both reports.
+  // Sorted by fieldOrderNumber so the comparison rows follow the same order
+  // as the original form — falling back to 9999 for labels only in one report.
   const allLabels = Array.from(
     new Set([
       ...fieldsA.map((f) => f.fieldLabel ?? "(untitled)"),
@@ -152,6 +196,7 @@ export default function CompareScreen() {
     return o1 - o2;
   });
 
+  // Format the creation dates shown above each column header.
   const dateA = reportsToCompare[0]
     ? new Date(reportsToCompare[0].createdAt ?? "").toLocaleDateString()
     : "";
@@ -159,12 +204,15 @@ export default function CompareScreen() {
     ? new Date(reportsToCompare[1].createdAt ?? "").toLocaleDateString()
     : "";
 
+  // ── Render ────────────────────────────────────────────────────────────────
+
   return (
     <SafeAreaView className="flex-1 bg-background" edges={["bottom"]}>
       <ScreenHeader title="Compare by Property ID" />
 
       <ScrollView contentContainerClassName="px-5 py-6 gap-4" keyboardShouldPersistTaps="handled">
-        {/* Property ID input + search button */}
+
+        {/* ── Search bar ────────────────────────────────────────────────── */}
         <Text className="text-sm text-textSecondary">Property ID</Text>
         <View className="flex-row gap-3">
           <TextInput
@@ -186,8 +234,11 @@ export default function CompareScreen() {
           </Pressable>
         </View>
 
+        {/* Feedback message — shown for errors, no results, or single-report warnings */}
         {message && <Text className="text-textSecondary mt-2">{message}</Text>}
 
+        {/* ── Comparison table ──────────────────────────────────────────── */}
+        {/* Only rendered when exactly 2 reports were found */}
         {reportsToCompare.length === 2 && (
           <View className="mt-4">
             <Text className="text-sm text-textSecondary mb-3">
@@ -197,9 +248,11 @@ export default function CompareScreen() {
             {loading ? (
               <ActivityIndicator />
             ) : (
+              // One row per unique field label, showing A and B side by side.
               allLabels.map((label) => {
                 const fieldA = fieldsA.find((f) => f.fieldLabel === label) ?? null;
                 const fieldB = fieldsB.find((f) => f.fieldLabel === label) ?? null;
+                // Use whichever report has this field to determine how to render it.
                 const type = fieldA?.fieldType ?? fieldB?.fieldType ?? "text";
 
                 return (
@@ -208,12 +261,14 @@ export default function CompareScreen() {
                       {label}
                     </Text>
                     <View className="flex-row gap-2">
+                      {/* Left column — older report (A) */}
                       <View className="flex-1">
                         <Text className="text-xs text-textSecondary mb-1 text-center">
                           {dateA}
                         </Text>
                         <FieldPane field={fieldA} type={type} />
                       </View>
+                      {/* Right column — newer report (B) */}
                       <View className="flex-1">
                         <Text className="text-xs text-textSecondary mb-1 text-center">
                           {dateB}
@@ -232,6 +287,14 @@ export default function CompareScreen() {
   );
 }
 
+// ─── FieldPane ────────────────────────────────────────────────────────────────
+//
+// Renders a single field value inside the comparison table.
+// Handles three cases:
+//   - null field   → "No data" placeholder (field didn't exist in this report)
+//   - camera field → photo thumbnail, or "No image" if no media was saved
+//   - text field   → plain text content, or "Empty" if the field was left blank
+
 function FieldPane({
   field,
   type,
@@ -239,6 +302,8 @@ function FieldPane({
   field: FieldWithMedia | null;
   type: string;
 }) {
+  // Field didn't exist in this report at all — show a placeholder so the
+  // row still aligns with the other column.
   if (!field) {
     return (
       <View className="bg-surface border border-border rounded-lg p-3 items-center justify-center min-h-[80px]">
@@ -247,6 +312,7 @@ function FieldPane({
     );
   }
 
+  // Camera fields render as a square thumbnail using the joined mediaUrl.
   if (type === "camera") {
     return (
       <View
@@ -265,7 +331,7 @@ function FieldPane({
     );
   }
 
-  // text / voice_text
+  // All other field types (text, voice_text, etc.) render as plain text.
   const content = field.fieldData?.trim();
   return (
     <View className="bg-surface border border-border rounded-lg p-3 min-h-[80px]">
