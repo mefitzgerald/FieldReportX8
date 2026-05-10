@@ -55,6 +55,9 @@ const STATUS_OPTIONS: { label: string; value: ReportStatus }[] = [
 
 // Generates a lightweight integrity fingerprint from the report data.
 // Not cryptographic — used to detect if a report has been modified after submission.
+// Uses a djb2-style hash: (hash * 31) + charCode, accumulated over every character.
+// `hash |= 0` clamps the value to a signed 32-bit integer each iteration to prevent
+// the number from growing beyond JavaScript's safe integer range.
 const generateChecksum = (data: object): string => {
   const str = JSON.stringify(data);
   let hash = 0;
@@ -179,7 +182,9 @@ export default function ReportScreen() {
       const savedFields = await sqliteHelper.reportField.getAllByReportId(id);
 
       // Map Report_Field rows to ReportFieldTemplateRow shape so renderField
-      // works identically for both new and existing reports
+      // works identically for both new and existing reports.
+      // reportTemplateId is set to 0 as a placeholder — renderField only uses
+      // fieldTemplateId to key form fields, so this value is never read.
       const mappedFields: ReportFieldTemplateRow[] = savedFields.map(
         (f: ReportFieldRow) => ({
           fieldTemplateId: f.fieldId,
@@ -540,6 +545,7 @@ export default function ReportScreen() {
                     }}
                   />
                 );
+              // Live gyroscope readings — saves x/y/z axes as a JSON object
               case "sensor_gyro":
                 return (
                   <SensorInputField
@@ -548,6 +554,7 @@ export default function ReportScreen() {
                     type="gyroscope"
                   />
                 );
+              // Plain single-line text input
               case "text":
                 return (
                   <TextInput
@@ -560,6 +567,7 @@ export default function ReportScreen() {
                     value={(value as string) ?? ""}
                   />
                 );
+              // Speech-to-text — all four aliases map to the same component
               case "voice":
               case "voice_text":
               case "speech":
@@ -613,6 +621,7 @@ export default function ReportScreen() {
                     value={(value as unknown as number) ?? null}
                   />
                 );
+              // ML Kit pose detection — captures camera frame, overlays joint skeleton, saves as JPEG
               case "pose_detect":
                 return (
                   <PoseInputField
