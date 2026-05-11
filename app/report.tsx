@@ -114,7 +114,7 @@ export default function ReportScreen() {
   // Disabled while a camera field is in annotation phase so the pan gesture
   // reaches Skia instead of being intercepted by the ScrollView.
   const [scrollEnabled, setScrollEnabled] = useState(true);
-  const [cameraFieldY, setCameraFieldY] = useState(0);
+  const [cameraFieldY, setCameraFieldY] = useState<Record<string, number>>({});
   const scrollRef = useRef<ScrollView>(null);
   // Holds a ref to the camera field's View container so we can measure
   // its y offset and scroll to it precisely when annotation starts.
@@ -501,7 +501,7 @@ export default function ReportScreen() {
       <View
         key={fieldKey}
         onLayout={field.fieldTemplateType === "camera"
-          ? (e) => setCameraFieldY(e.nativeEvent.layout.y)
+          ? (e) => { const y = e.nativeEvent.layout.y; setCameraFieldY((prev) => ({ ...prev, [fieldKey]: y })); }
           : undefined}
         className="mb-6"
       >
@@ -540,7 +540,7 @@ export default function ReportScreen() {
                     onAnnotatingChange={(annotating) => {
                       setScrollEnabled(!annotating);
                       if (annotating) {
-                        scrollRef.current?.scrollTo({ y: cameraFieldY, animated: true });
+                        scrollRef.current?.scrollTo({ y: cameraFieldY[fieldKey] ?? 0, animated: true });
                       }
                     }}
                   />

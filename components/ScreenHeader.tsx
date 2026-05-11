@@ -1,7 +1,7 @@
-import { useTheme, THEME_COLOURS } from "@/contexts/ThemeContext";
+import { THEME_COLOURS, useTheme } from "@/contexts/ThemeContext";
+import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { Image, Pressable, StatusBar, Text, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -24,8 +24,8 @@ export function ScreenHeader({ title, showBack = true }: ScreenHeaderProps) {
 
   return (
     <View
-      style={{ 
-        backgroundColor: colours.background, 
+      style={{
+        backgroundColor: colours.background,
         borderBottomColor: colours.border,
         paddingTop: StatusBar.currentHeight ?? 0, // accounts for Android status bar height
       }}
@@ -43,16 +43,13 @@ export function ScreenHeader({ title, showBack = true }: ScreenHeaderProps) {
 
       {/* App logo */}
       <Image
-        source={require("@/assets/images/reportXlogo.png")}
+        source={require("@/assets/images/reportXlogo.webp")}
         style={{ width: 28, height: 28 }}
         resizeMode="contain"
       />
 
       {/* Screen title */}
-      <Text
-        style={{ color: colours.text }}
-        className="text-lg font-bold ml-2"
-      >
+      <Text style={{ color: colours.text }} className="text-lg font-bold ml-2">
         {title}
       </Text>
     </View>
