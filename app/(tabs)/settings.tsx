@@ -6,14 +6,7 @@ import * as Notifications from "expo-notifications";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
-import {
-  Alert,
-  Pressable,
-  ScrollView,
-  Switch,
-  Text,
-  View,
-} from "react-native";
+import { Alert, Pressable, ScrollView, Switch, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -58,9 +51,13 @@ export default function SettingsScreen() {
     await storageHelper.reminder.save({ enabled: value, hours: reminderHours });
     if (!value) {
       await Notifications.cancelAllScheduledNotificationsAsync();
-      console.log("[Notifications] Draft reminders turned OFF — all pending reminders cancelled");
+      console.log(
+        "[Notifications] Draft reminders turned OFF — all pending reminders cancelled",
+      );
     } else {
-      console.log(`[Notifications] Draft reminders turned ON — reminder set for ${reminderHours}h after save`);
+      console.log(
+        `[Notifications] Draft reminders turned ON — reminder set for ${reminderHours}h after save`,
+      );
     }
   };
 
@@ -70,7 +67,9 @@ export default function SettingsScreen() {
   const handleSelectHours = async (hours: number) => {
     setReminderHours(hours);
     await storageHelper.reminder.save({ enabled: reminderEnabled, hours });
-    console.log(`[Notifications] Reminder duration updated — ${hours}h after save`);
+    console.log(
+      `[Notifications] Reminder duration updated — ${hours}h after save`,
+    );
   };
 
   // ── Handlers ─────────────────────────────────────────────────────────────
@@ -107,15 +106,18 @@ export default function SettingsScreen() {
                 // a recent login to protect against stolen session tokens
                 Alert.alert(
                   "Please sign in again",
-                  "For security, please log out and log back in before deleting your account."
+                  "For security, please log out and log back in before deleting your account.",
                 );
               } else {
-                Alert.alert("Error", error.message ?? "Failed to delete account.");
+                Alert.alert(
+                  "Error",
+                  error.message ?? "Failed to delete account.",
+                );
               }
             }
           },
         },
-      ]
+      ],
     );
   };
 
@@ -129,7 +131,6 @@ export default function SettingsScreen() {
 
       {/* ScrollView handles smaller screens where all rows might not fit */}
       <ScrollView contentContainerClassName="p-6 gap-6">
-
         {/* ── Header ──────────────────────────────────────────────────────── */}
         <View className="items-center gap-2">
           <Text className="text-2xl font-bold text-text">Settings</Text>
@@ -157,7 +158,9 @@ export default function SettingsScreen() {
 
           {/* Toggle row */}
           <View className="flex-row items-center justify-between">
-            <Text className="text-base text-text">Remind me about draft reports</Text>
+            <Text className="text-base text-text">
+              Remind me about draft reports
+            </Text>
             <Switch
               value={reminderEnabled}
               onValueChange={handleToggleReminder}
@@ -179,8 +182,8 @@ export default function SettingsScreen() {
                     key={hours}
                     className={`border rounded-full py-1.5 px-4 ${
                       reminderHours === hours
-                        ? "bg-primary border-primary"  // active — filled
-                        : "border-border"              // inactive — outline only
+                        ? "bg-primary border-primary" // active — filled
+                        : "border-border" // inactive — outline only
                     }`}
                     onPress={() => handleSelectHours(hours)}
                   >
@@ -257,7 +260,6 @@ export default function SettingsScreen() {
             destructive
           />
         </View>
-
       </ScrollView>
     </SafeAreaView>
   );
@@ -276,7 +278,11 @@ interface SettingsRowProps {
   destructive?: boolean;
 }
 
-function SettingsRow({ label, onPress, destructive = false }: SettingsRowProps) {
+function SettingsRow({
+  label,
+  onPress,
+  destructive = false,
+}: SettingsRowProps) {
   return (
     <Pressable
       // active:opacity-50 gives a visual press response without a separate
@@ -285,7 +291,11 @@ function SettingsRow({ label, onPress, destructive = false }: SettingsRowProps) 
       onPress={onPress}
     >
       {/* Label — red for destructive actions, default text colour otherwise */}
-      <Text className={destructive ? "text-danger text-base" : "text-text text-base"}>
+      <Text
+        className={
+          destructive ? "text-danger text-base" : "text-text text-base"
+        }
+      >
         {label}
       </Text>
       {/* Chevron indicator */}
