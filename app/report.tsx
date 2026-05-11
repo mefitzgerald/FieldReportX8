@@ -1,17 +1,19 @@
-import { scheduleDraftReminder } from "@/utils/notificationHelper";
-import { storageHelper } from "@/utils/storageHelper";
 import { CameraInputField } from "@/components/inputs/CameraInputField";
-import { TiltAngleInputField, TiltReading } from "@/components/inputs/TiltAngleInputField";
 import { DateTimeInputField } from "@/components/inputs/DateTimeInputField";
 import { GpsInputField } from "@/components/inputs/GpsInputField";
 import { GpsMapInputField } from "@/components/inputs/GpsMapInputField";
+import { PoseInputField } from "@/components/inputs/PoseInputField";
 import { RatingInputField } from "@/components/inputs/RatingInputField";
 import { SensorInputField } from "@/components/inputs/SensorInputField";
-import { PoseInputField } from "@/components/inputs/PoseInputField";
 import { SignatureInputField } from "@/components/inputs/SignatureInputField";
+import {
+  TiltAngleInputField,
+  TiltReading,
+} from "@/components/inputs/TiltAngleInputField";
 import { VoiceToTextInputField } from "@/components/inputs/VoiceToTextInputField";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { useAuth } from "@/contexts/AuthContext";
+import { scheduleDraftReminder } from "@/utils/notificationHelper";
 import { previewReportPdf, shareReportPdf } from "@/utils/reportPdfGenerator";
 import {
   ReportFieldRow,
@@ -20,6 +22,7 @@ import {
   ReportTemplateRow,
   sqliteHelper,
 } from "@/utils/sqliteHelper";
+import { storageHelper } from "@/utils/storageHelper";
 import { useBatteryLevel } from "expo-battery";
 import Constants from "expo-constants";
 import { router, useLocalSearchParams } from "expo-router";
@@ -73,7 +76,6 @@ const generateChecksum = (data: object): string => {
 
 // Handles both creating a new report (templateId param) and
 // editing an existing report (reportId param).
-
 export default function ReportScreen() {
   const { templateId, reportId } = useLocalSearchParams<{
     templateId?: string;
@@ -114,7 +116,7 @@ export default function ReportScreen() {
   // Disabled while a camera field is in annotation phase so the pan gesture
   // reaches Skia instead of being intercepted by the ScrollView.
   const [scrollEnabled, setScrollEnabled] = useState(true);
-  const [cameraFieldY, setCameraFieldY] = useState(0);
+  const [cameraFieldY, setCameraFieldY] = useState<Record<string, number>>({});
   const scrollRef = useRef<ScrollView>(null);
   // Holds a ref to the camera field's View container so we can measure
   // its y offset and scroll to it precisely when annotation starts.
@@ -204,7 +206,11 @@ export default function ReportScreen() {
       // need JSON.parse to restore their object values.
       const defaultValues: FormValues = {};
       const plainStringTypes = new Set([
-        "text", "voice_text", "voice", "speech", "speech_to_text",
+        "text",
+        "voice_text",
+        "voice",
+        "speech",
+        "speech_to_text",
       ]);
       for (const f of savedFields) {
         const fieldKey = `field_${f.fieldId}`;
@@ -500,9 +506,14 @@ export default function ReportScreen() {
     return (
       <View
         key={fieldKey}
-        onLayout={field.fieldTemplateType === "camera"
-          ? (e) => setCameraFieldY(e.nativeEvent.layout.y)
-          : undefined}
+        onLayout={
+          field.fieldTemplateType === "camera"
+            ? (e) => {
+                const y = e.nativeEvent.layout.y;
+                setCameraFieldY((prev) => ({ ...prev, [fieldKey]: y }));
+              }
+            : undefined
+        }
         className="mb-6"
       >
         {/* Field label — uppercase with red asterisk for required fields */}
@@ -540,7 +551,10 @@ export default function ReportScreen() {
                     onAnnotatingChange={(annotating) => {
                       setScrollEnabled(!annotating);
                       if (annotating) {
-                        scrollRef.current?.scrollTo({ y: cameraFieldY, animated: true });
+                        scrollRef.current?.scrollTo({
+                          y: cameraFieldY[fieldKey] ?? 0,
+                          animated: true,
+                        });
                       }
                     }}
                   />
@@ -769,7 +783,10 @@ export default function ReportScreen() {
             submitting || exporting ? "opacity-60" : "active:opacity-80"
           }`}
           onPress={handleSubmit(onSubmit, () =>
-            Alert.alert("Required fields", "Please complete all required fields before submitting.")
+            Alert.alert(
+              "Required fields",
+              "Please complete all required fields before submitting.",
+            ),
           )}
           disabled={submitting || exporting}
         >

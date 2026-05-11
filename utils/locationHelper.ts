@@ -16,7 +16,9 @@ export interface GpsCoords {
 
 export const getCurrentLocation = async (): Promise<GpsCoords | null> => {
   try {
-    console.log("[locationHelper] Requesting foreground location permission...");
+    console.log(
+      "[locationHelper] Requesting foreground location permission...",
+    );
     const { status } = await Location.requestForegroundPermissionsAsync();
 
     if (status !== "granted") {
@@ -27,8 +29,8 @@ export const getCurrentLocation = async (): Promise<GpsCoords | null> => {
     console.log("[locationHelper] Permission granted — getting GPS fix...");
     const location = await Location.getCurrentPositionAsync({
       // High accuracy uses GPS hardware (slower but precise).
-      // Change to Balanced for faster fixes at the cost of some accuracy.
-      accuracy: Location.Accuracy.High,
+      // Balanced for faster fixes at the cost of some accuracy.
+      accuracy: Location.Accuracy.Lowest,
     });
 
     const coords: GpsCoords = {

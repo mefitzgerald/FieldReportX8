@@ -6,7 +6,6 @@ import { Platform } from "react-native";
 // Show alerts and play sound for notifications received while app is foregrounded
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: false,
     shouldShowBanner: true,
@@ -34,19 +33,23 @@ Notifications.setNotificationHandler({
  * cancel a pending reminder before it fires.
  * ─────────────────────────────────────────────────────────────────────────────
  */
-export const scheduleDraftReminder = async (hours: number): Promise<string | null> => {
+export const scheduleDraftReminder = async (
+  hours: number,
+): Promise<string | null> => {
   // Notification permission must be granted or the OS will reject the schedule
   // request. We already request permission in registerForPushNotifications on
   // login, so this will normally be granted — this check is a safety guard.
   const { status } = await Notifications.getPermissionsAsync();
   if (status !== "granted") {
-    console.log("[Notifications] Cannot schedule reminder — permission not granted");
+    console.log(
+      "[Notifications] Cannot schedule reminder — permission not granted",
+    );
     return null;
   }
 
   // TimeIntervalTrigger tells the OS to fire the notification after a set
   // number of seconds. repeats: false means it fires once and is done —
-  // it will not repeat like an alarm clock.
+  // it will not repeat like an alarm clock.   const seconds = hours * 60 * 60;
   const seconds = hours * 60 * 60;
 
   const identifier = await Notifications.scheduleNotificationAsync({
@@ -65,11 +68,15 @@ export const scheduleDraftReminder = async (hours: number): Promise<string | nul
     },
   });
 
-  console.log(`[Notifications] Draft reminder scheduled in ${hours}h (id: ${identifier})`);
+  console.log(
+    `[Notifications] Draft reminder scheduled in ${hours}h (id: ${identifier})`,
+  );
   return identifier;
 };
 
-export const registerForPushNotifications = async (firebaseUid: string): Promise<void> => {
+export const registerForPushNotifications = async (
+  firebaseUid: string,
+): Promise<void> => {
   if (Platform.OS !== "android") return;
 
   const { status: existingStatus } = await Notifications.getPermissionsAsync();
