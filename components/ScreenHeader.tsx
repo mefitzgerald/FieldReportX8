@@ -43,7 +43,7 @@ export function ScreenHeader({ title, showBack = true }: ScreenHeaderProps) {
 
       {/* App logo */}
       <Image
-        source={require("@/assets/images/reportXlogo.webp")}
+        source={require("@/assets/images/reportXlogo.png")}
         style={{ width: 28, height: 28 }}
         resizeMode="contain"
       />
