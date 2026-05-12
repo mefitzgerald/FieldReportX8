@@ -1,0 +1,6 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<testsuites>
+  <testsuite name="Test Suite" device="ZY32F4NVVD" tests="1" failures="0" time="72.0">
+    <testcase id="create-report" name="create-report" classname="create-report" time="72.0" status="SUCCESS"/>
+  </testsuite>
+</testsuites>

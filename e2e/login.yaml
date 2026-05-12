@@ -1,0 +1,15 @@
+appId: com.fieldreportx.app
+---
+- launchApp
+- tapOn:
+    text: "Email"
+- inputText: maestro@test.com
+- tapOn:
+    text: "Password"
+- inputText: mmmmmm
+- tapOn:
+    text: "Sign in"
+- assertVisible:
+    text: "History"
+- assertVisible:
+    text: "Settings"

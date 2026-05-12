@@ -1,0 +1,71 @@
+appId: com.fieldreportx.app
+---
+# Complete end-to-end test: Login -> Create Report -> Submit -> Verify in History
+- launchApp
+#Optional record video of the test run for debugging (uncomment if needed)
+# - startRecording: recording.mp4
+# Login
+- tapOn:
+    text: "Email"
+- inputText: maestro@test.com
+- tapOn:
+    text: "Password"
+- inputText: mmmmmm
+- tapOn:
+    text: "Sign in"
+# Wait for login to complete and home screen to load
+- assertVisible:
+    text: "Default Field Report"
+# Tap on Default Field Report to start creating report
+- tapOn:
+    text: "Default Field Report"
+# Enter username in the username field
+- tapOn:
+    text: "User Name"
+- inputText: maestro
+# Hide keyboard if visible (especially on Android)
+- hideKeyboard
+# Find Submit button and scroll until it's visible (in case it's off-screen)
+- scrollUntilVisible:
+    element: "Submit Report" # Replace with text or id: "footer_id"
+    direction: DOWN
+# Submit report
+- tapOn:
+    text: "Submit Report"
+# Press OK on the alert
+- tapOn:
+    text: "OK"
+# Navigate to History tab
+- tapOn:
+    text: "History"
+# Verify the report appears in history
+- assertVisible:
+    text: "Default Field Report"
+# Open the saved report
+- tapOn:
+    text: "Default Field Report"
+# Verify the username is correct in the opened report
+- assertVisible:
+    text: "maestro"
+# Go back to report history screen
+- back
+# Delete the created report to clean up
+- tapOn:
+    text: "✕"
+- tapOn:
+    text: "DELETE"
+# Verify the report is deleted and no longer visible in history
+- assertNotVisible:
+    text: "Default Field Report"
+# Logout to clean up session
+- tapOn:
+    text: "Settings"
+# Find Logout button and scroll until it's visible (in case it's off-screen)
+- scrollUntilVisible:
+    element: "Logout" # Replace with text or id: "footer_id"
+    direction: DOWN
+# Logout of the app
+- tapOn:
+    text: "Logout"
+# Stop recording the test run (uncomment if startRecording is used)
+# - stopRecording
