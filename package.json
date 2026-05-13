@@ -10,10 +10,7 @@
     "test": "jest"
   },
   "jest": {
-    "preset": "jest-expo",
-    "setupFilesAfterFramework": [
-      "@testing-library/react-native/extend-expect"
-    ]
+    "preset": "jest-expo"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",

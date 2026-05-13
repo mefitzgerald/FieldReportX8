@@ -1,7 +1,13 @@
+import { File } from "expo-file-system";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
-import { File } from "expo-file-system";
 import { BusinessProfileRow, ReportFieldRow, ReportRow } from "./sqliteHelper"; // 👈 adjust path
+
+// ─── Module state ─────────────────────────────────────────────────────────────
+
+// Guard against concurrent print requests, which throws
+// "Another print request is already in progress"
+let isPrintInProgress = false;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -74,7 +80,12 @@ const buildReportHtml = async (data: PdfReportData): Promise<string> => {
     let valueHtml = "<em>No data</em>";
 
     if (field.fieldData) {
-      if (type === "camera" || type === "sign" || type === "gps_map" || type === "pose_detect") {
+      if (
+        type === "camera" ||
+        type === "sign" ||
+        type === "gps_map" ||
+        type === "pose_detect"
+      ) {
         // Convert image URI to base64 for inline embedding.
         // camera = annotated photo, sign = signature PNG, gps_map = map snapshot PNG.
         const imageMaxHeight: Record<string, string> = {
@@ -247,21 +258,40 @@ const buildReportHtml = async (data: PdfReportData): Promise<string> => {
  * The user can save as PDF or print directly from the preview.
  */
 export const previewReportPdf = async (data: PdfReportData): Promise<void> => {
-  console.log("[PdfGenerator] Building HTML for report:", data.report.reportId);
+  // Guard against concurrent print requests
+  if (isPrintInProgress) {
+    console.warn(
+      "[PdfGenerator] Print request already in progress, ignoring duplicate call",
+    );
+    return;
+  }
 
-  const html = await buildReportHtml(data);
+  try {
+    isPrintInProgress = true;
+    console.log(
+      "[PdfGenerator] Building HTML for report:",
+      data.report.reportId,
+    );
 
-  // Determine orientation from the report layout field
-  const isLandscape = data.report.reportLayout?.toLowerCase() === "landscape";
+    const html = await buildReportHtml(data);
 
-  console.log("[PdfGenerator] Opening print preview, landscape:", isLandscape);
+    // Determine orientation from the report layout field
+    const isLandscape = data.report.reportLayout?.toLowerCase() === "landscape";
 
-  await Print.printAsync({
-    html,
-    orientation: isLandscape
-      ? Print.Orientation.landscape
-      : Print.Orientation.portrait,
-  });
+    console.log(
+      "[PdfGenerator] Opening print preview, landscape:",
+      isLandscape,
+    );
+
+    await Print.printAsync({
+      html,
+      orientation: isLandscape
+        ? Print.Orientation.landscape
+        : Print.Orientation.portrait,
+    });
+  } finally {
+    isPrintInProgress = false;
+  }
 };
 
 /**
@@ -272,31 +302,44 @@ export const shareReportPdf = async (
   data: PdfReportData,
   fileName?: string,
 ): Promise<void> => {
-  console.log(
-    "[PdfGenerator] Generating PDF for report:",
-    data.report.reportId,
-  );
+  // Guard against concurrent print requests
+  if (isPrintInProgress) {
+    console.warn(
+      "[PdfGenerator] Print request already in progress, ignoring duplicate call",
+    );
+    return;
+  }
 
-  const html = await buildReportHtml(data);
-  const isLandscape = data.report.reportLayout?.toLowerCase() === "landscape";
+  try {
+    isPrintInProgress = true;
+    console.log(
+      "[PdfGenerator] Generating PDF for report:",
+      data.report.reportId,
+    );
 
-  // TODO: pass orientation to printToFileAsync (isLandscape is computed above but not yet used here)
-  const { uri } = await Print.printToFileAsync({
-    html,
-    base64: false,
-  });
+    const html = await buildReportHtml(data);
+    const isLandscape = data.report.reportLayout?.toLowerCase() === "landscape";
 
-  console.log("[PdfGenerator] PDF generated at:", uri);
-
-  // Open share sheet directly with the generated URI
-  // (skip the rename step to avoid expo-file-system dependency)
-  const canShare = await Sharing.isAvailableAsync();
-  if (canShare) {
-    await Sharing.shareAsync(uri, {
-      mimeType: "application/pdf",
-      dialogTitle: `Share ${data.report.reportName ?? "Report"}`,
+    // TODO: pass orientation to printToFileAsync (isLandscape is computed above but not yet used here)
+    const { uri } = await Print.printToFileAsync({
+      html,
+      base64: false,
     });
-  } else {
-    console.warn("[PdfGenerator] Sharing not available on this device");
+
+    console.log("[PdfGenerator] PDF generated at:", uri);
+
+    // Open share sheet directly with the generated URI
+    // (skip the rename step to avoid expo-file-system dependency)
+    const canShare = await Sharing.isAvailableAsync();
+    if (canShare) {
+      await Sharing.shareAsync(uri, {
+        mimeType: "application/pdf",
+        dialogTitle: `Share ${data.report.reportName ?? "Report"}`,
+      });
+    } else {
+      console.warn("[PdfGenerator] Sharing not available on this device");
+    }
+  } finally {
+    isPrintInProgress = false;
   }
 };
