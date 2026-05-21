@@ -3,7 +3,7 @@ appId: com.fieldreportx.app
 # Complete end-to-end test: Login -> Create Report -> Submit -> Verify in History
 - launchApp
 #Optional record video of the test run for debugging (uncomment if needed)
-# - startRecording: recording.mp4
+- startRecording: recording.mp4
 # Login
 - tapOn:
     text: "Email"
@@ -68,4 +68,4 @@ appId: com.fieldreportx.app
 - tapOn:
     text: "Logout"
 # Stop recording the test run (uncomment if startRecording is used)
-# - stopRecording
+- stopRecording
