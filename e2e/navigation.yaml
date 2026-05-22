@@ -1,0 +1,45 @@
+appId: com.fieldreportx.app
+---
+# Smoke test: Login -> verify all three tabs load -> Logout
+- launchApp
+- startRecording: navigation-recording
+
+# ── Login ──────────────────────────────────────────────────────────────────────
+- tapOn:
+    text: "Email"
+- inputText: moto@m.com
+- tapOn:
+    text: "Password"
+- inputText: mmmmmm
+- hideKeyboard
+- tapOn:
+    text: "Sign in"
+
+# ── Home tab ───────────────────────────────────────────────────────────────────
+- assertVisible:
+    text: "Default Field Report"
+
+# ── History tab ────────────────────────────────────────────────────────────────
+- tapOn:
+    text: "History"
+- assertVisible:
+    text: "History"
+
+# ── Settings tab ───────────────────────────────────────────────────────────────
+- tapOn:
+    text: "Settings"
+- assertVisible:
+    text: "Settings"
+
+# ── Logout ─────────────────────────────────────────────────────────────────────
+- scrollUntilVisible:
+    element: "Logout"
+    direction: DOWN
+- tapOn:
+    text: "Logout"
+
+# Confirm we're back on the login screen
+- assertVisible:
+    text: "Sign in"
+
+- stopRecording

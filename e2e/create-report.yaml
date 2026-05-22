@@ -11,6 +11,7 @@ appId: com.fieldreportx.app
 - tapOn:
     text: "Password"
 - inputText: mmmmmm
+- hideKeyboard
 - tapOn:
     text: "Sign in"
 # Wait for login to complete and home screen to load

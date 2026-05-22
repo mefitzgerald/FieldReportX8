@@ -1,0 +1,67 @@
+appId: com.fieldreportx.app
+---
+# End-to-end test: Login -> Settings -> User Profile -> Set display name -> Save
+- launchApp
+# Optional: record video of the test run for debugging (uncomment if needed)
+- startRecording: update-profile-recording
+
+# ── Login ──────────────────────────────────────────────────────────────────────
+- tapOn:
+    text: "Email"
+- inputText: moto@m.com
+- tapOn:
+    text: "Password"
+- inputText: mmmmmm
+# Hide keyboard if visible (especially on Android)
+- hideKeyboard
+- tapOn:
+    text: "Sign in"
+
+# ── Navigate to Settings ───────────────────────────────────────────────────────
+- tapOn:
+    text: "Settings"
+
+# Confirm we're on the Settings screen
+- assertVisible:
+    text: "Settings"
+
+# ── Navigate to User Profile ───────────────────────────────────────────────────
+# Scroll down in case User Profile row is off screen
+- scrollUntilVisible:
+    element: "User Profile"
+    direction: DOWN
+- tapOn:
+    text: "User Profile"
+
+# Confirm we're on the Profile screen
+- assertVisible:
+    text: "Display Name"
+
+# ── Set display name ───────────────────────────────────────────────────────────
+# Tap the display name field, clear any existing value, then type the new name
+- tapOn:
+    text: "Your name"
+- eraseText
+- inputText: maestro
+- hideKeyboard
+
+# ── Save ───────────────────────────────────────────────────────────────────────
+- scrollUntilVisible:
+    element: "Save Profile"
+    direction: DOWN
+- tapOn:
+    text: "Save Profile"
+
+# Confirm the save success alert appeared
+- assertVisible:
+    text: "Your profile has been updated."
+- tapOn:
+    text: "OK"
+
+# ── Verify ─────────────────────────────────────────────────────────────────────
+# The display name field should now show the saved value
+- assertVisible:
+    text: "maestro"
+
+# Optional: stop recording (uncomment if startRecording is used)
+- stopRecording

@@ -36,6 +36,8 @@ maestro test --format html-detailed --output e2e/reports/detailed-report.html e2
 ## Test Files
 
 - **create-report.yaml** - Complete end-to-end test: Login → Create report with gyroscope data → Submit → Verify in History
+- **update-profile.yaml** - Login → Settings → User Profile → Set display name to "maestro" → Save → Verify
+- **navigation.yaml** - Login → verify Home, History, and Settings tabs all load → Logout
 
 ## Notes
 
