@@ -13,6 +13,7 @@ import {
 import { VoiceToTextInputField } from "@/components/inputs/VoiceToTextInputField";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { useAuth } from "@/contexts/AuthContext";
+import { generateChecksum } from "@/utils/checksumHelper";
 import { scheduleDraftReminder } from "@/utils/notificationHelper";
 import { previewReportPdf, shareReportPdf } from "@/utils/reportPdfGenerator";
 import {
@@ -54,24 +55,6 @@ const STATUS_OPTIONS: { label: string; value: ReportStatus }[] = [
   { label: "Archived", value: "archived" },
 ];
 
-// ─── Checksum helper ──────────────────────────────────────────────────────────
-
-// Generates a lightweight integrity fingerprint from the report data.
-// Not cryptographic — used to detect if a report has been modified after submission.
-// Uses a djb2-style hash: (hash * 31) + charCode, accumulated over every character.
-// `hash |= 0` clamps the value to a signed 32-bit integer each iteration to prevent
-// the number from growing beyond JavaScript's safe integer range.
-const generateChecksum = (data: object): string => {
-  const str = JSON.stringify(data);
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash |= 0;
-  }
-  return Math.abs(hash).toString(16);
-};
-
 // ─── Component ────────────────────────────────────────────────────────────────
 
 // Handles both creating a new report (templateId param) and
@@ -83,6 +66,7 @@ export default function ReportScreen() {
   }>();
   const { user } = useAuth();
 
+  // ─── Battery Level Check ──────────────────────────────────────────────────────
   // Battery level check on mount — shows alert if battery is critically low to warn about potential data loss.
   const batteryLevel = useBatteryLevel(); //live subscription so will update even if report is already open
   const batteryAlertShown = useRef(false); // will only alert once not every time data recieved
