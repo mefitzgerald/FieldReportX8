@@ -19,7 +19,9 @@ export function ThemeSelector({ firebaseUid }: ThemeSelectorProps) {
 
   return (
     <View style={styles.container}>
-      <Text style={[styles.title, { color: colours.textSecondary }]}>Theme</Text>
+      <Text style={[styles.title, { color: colours.textSecondary }]}>
+        Themes
+      </Text>
       <View style={styles.options}>
         {THEME_OPTIONS.map((option) => (
           <Pressable
@@ -28,7 +30,10 @@ export function ThemeSelector({ firebaseUid }: ThemeSelectorProps) {
               styles.option,
               { borderColor: colours.border },
               // Highlight the currently active theme pill
-              theme === option.value && { backgroundColor: colours.tint, borderColor: colours.tint },
+              theme === option.value && {
+                backgroundColor: colours.tint,
+                borderColor: colours.tint,
+              },
             ]}
             onPress={() => setTheme(option.value as ThemeName, firebaseUid)}
           >
