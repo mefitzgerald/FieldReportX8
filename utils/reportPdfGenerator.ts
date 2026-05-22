@@ -1,6 +1,7 @@
 import { File } from "expo-file-system";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
+import { isSamsung } from "./deviceHelper";
 import { BusinessProfileRow, ReportFieldRow, ReportRow } from "./sqliteHelper"; // 👈 adjust path
 
 // ─── Module state ─────────────────────────────────────────────────────────────
@@ -254,8 +255,16 @@ const buildReportHtml = async (data: PdfReportData): Promise<string> => {
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 /**
- * Opens the native print/PDF preview for a report.
- * The user can save as PDF or print directly from the preview.
+ * Opens a PDF preview for a report.
+ *
+ * Samsung devices: Print.printAsync freezes due to Samsung's custom Android
+ * print framework. On Samsung we instead write the PDF to a temp file and
+ * open the native share sheet so the user can view it in any PDF app.
+ *
+ * All other devices: uses Print.printAsync (native print dialog) as before.
+ *
+ * To revert Samsung workaround: replace the entire function body with the
+ * original Print.printAsync block and remove the isSamsung import.
  */
 export const previewReportPdf = async (data: PdfReportData): Promise<void> => {
   // Guard against concurrent print requests
@@ -274,21 +283,46 @@ export const previewReportPdf = async (data: PdfReportData): Promise<void> => {
     );
 
     const html = await buildReportHtml(data);
-
-    // Determine orientation from the report layout field
     const isLandscape = data.report.reportLayout?.toLowerCase() === "landscape";
 
-    console.log(
-      "[PdfGenerator] Opening print preview, landscape:",
-      isLandscape,
-    );
+    if (isSamsung()) {
+      // ── Samsung fallback: write PDF to disk, open via share sheet ──────────
+      // Print.printAsync freezes on Samsung due to its custom print framework.
+      // Instead we generate the PDF file and open the share sheet titled
+      // "Preview Report" — distinct from the Share button which uses
+      // "Share Report" — so the user's intent is clear in the chooser.
+      //
+      // To revert: delete this branch and let the else block handle all devices.
+      console.log(
+        "[PdfGenerator] Samsung device detected — using share-based preview",
+      );
 
-    await Print.printAsync({
-      html,
-      orientation: isLandscape
-        ? Print.Orientation.landscape
-        : Print.Orientation.portrait,
-    });
+      const { uri } = await Print.printToFileAsync({ html, base64: false });
+      console.log("[PdfGenerator] PDF written to:", uri);
+
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        console.log("[PdfGenerator] Opening share sheet for PDF preview");
+        await Sharing.shareAsync(uri, {
+          mimeType: "application/pdf",
+          dialogTitle: `Preview ${data.report.reportName ?? "Report"}`,
+        });
+      } else {
+        console.warn("[PdfGenerator] Sharing not available on this device");
+      }
+    } else {
+      // ── Standard path: native print dialog ─────────────────────────────────
+      console.log(
+        "[PdfGenerator] Opening print preview, landscape:",
+        isLandscape,
+      );
+      await Print.printAsync({
+        html,
+        orientation: isLandscape
+          ? Print.Orientation.landscape
+          : Print.Orientation.portrait,
+      });
+    }
   } finally {
     isPrintInProgress = false;
   }
