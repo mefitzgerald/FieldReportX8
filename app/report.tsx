@@ -110,11 +110,21 @@ export default function ReportScreen() {
   // Used when saving to Report_Media.mediaGPS so each photo keeps its location tag.
   const [capturedGps, setCapturedGps] = useState<Record<string, string>>({});
 
-  // Dynamic field names based on fieldTemplateId e.g. "field_123"
+  // useForm manages all field values in one place — no separate useState per field.
+  // Field names are dynamic strings based on fieldTemplateId e.g. "field_123".
+  // FormValues is Record<string, string | object | null> so any field key is valid.
   const {
+    // control: passed to each <Controller> in the JSX to register that input
+    // with react-hook-form so its value is tracked and validated automatically.
     control,
+    // handleSubmit: wraps the save function — runs validation first and only
+    // calls onSave if all required fields pass. Used as onPress={handleSubmit(onSave)}.
     handleSubmit,
+    // reset: pre-fills the form with existing values when editing a saved report.
+    // Called after loading field data from SQLite so the user sees their prior input.
     reset,
+    // errors: object containing validation failures keyed by field name.
+    // e.g. errors["field_123"]?.message — used to show error text under required fields.
     formState: { errors },
   } = useForm<FormValues>();
 
@@ -253,6 +263,11 @@ export default function ReportScreen() {
           reportChecksum: checksum,
         });
 
+        // Update each field row with the new value the user entered.
+        // Form keys are "field_<id>" where <id> is:
+        //   - the fieldTemplateId when creating a new report
+        //   - the fieldId of the saved report field when editing (loadExistingReport
+        //     maps fieldId into fieldTemplateId so renderField works the same way in both cases)
         for (const field of fields) {
           const fieldKey = `field_${field.fieldTemplateId}`;
           const rawValue = formData[fieldKey];
